@@ -1,0 +1,36 @@
+apiVersion: v2
+name: sap-llm
+description: Enterprise-grade SAP Document AI with Process Memory Graph, RLHF, and Self-Healing capabilities
+version: 1.0.0
+appVersion: "1.0.0"
+type: application
+
+keywords:
+  - sap
+  - document-ai
+  - llm
+  - machine-learning
+  - process-memory-graph
+  - rlhf
+  - self-healing
+
+maintainers:
+  - name: SAP_LLM Team
+    email: team@sap-llm.example.com
+
+sources:
+  - https://github.com/AjithAccel4/SAP_LLM
+
+dependencies:
+  - name: redis
+    version: "17.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: neo4j
+    version: "5.x.x"
+    repository: https://helm.neo4j.com/neo4j
+    condition: neo4j.enabled
+  - name: kafka
+    version: "26.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled

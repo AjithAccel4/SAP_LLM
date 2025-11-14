@@ -1,0 +1,53 @@
+{{- if .Values.persistence.models.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "sap-llm.fullname" . }}-models
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sap-llm.labels" . | nindent 4 }}
+    component: models
+spec:
+  accessModes:
+    - {{ .Values.persistence.models.accessMode }}
+  storageClassName: {{ .Values.persistence.models.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.models.size }}
+{{- end }}
+---
+{{- if .Values.persistence.data.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "sap-llm.fullname" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sap-llm.labels" . | nindent 4 }}
+    component: data
+spec:
+  accessModes:
+    - {{ .Values.persistence.data.accessMode }}
+  storageClassName: {{ .Values.persistence.data.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.data.size }}
+{{- end }}
+---
+{{- if .Values.persistence.cache.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "sap-llm.fullname" . }}-cache
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sap-llm.labels" . | nindent 4 }}
+    component: cache
+spec:
+  accessModes:
+    - {{ .Values.persistence.cache.accessMode }}
+  storageClassName: {{ .Values.persistence.cache.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.cache.size }}
+{{- end }}

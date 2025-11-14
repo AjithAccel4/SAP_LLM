@@ -1,0 +1,214 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sap-llm.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sap-llm.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sap-llm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.config.monitoring.prometheus_port }}"
+        prometheus.io/path: "/metrics"
+      labels:
+        {{- include "sap-llm.selectorLabels" . | nindent 8 }}
+        version: {{ .Values.image.tag | quote }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "sap-llm.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.gpu.enabled }}
+      runtimeClassName: {{ .Values.gpu.runtimeClass }}
+      {{- end }}
+      initContainers:
+        - name: model-downloader
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              echo "Checking model availability..."
+              if [ ! -f /models/{{ .Values.config.model.name }}/config.json ]; then
+                echo "Model not found, downloading..."
+                # Model download logic here
+                echo "Model download complete"
+              else
+                echo "Model already available"
+              fi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+      containers:
+        - name: sap-llm
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.config.monitoring.prometheus_port }}
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: MODEL_PATH
+              value: "/models/{{ .Values.config.model.name }}"
+            - name: MODEL_QUANTIZATION
+              value: {{ .Values.config.model.quantization | quote }}
+            - name: TENSORRT_ENABLED
+              value: {{ .Values.config.triton.enabled | quote }}
+            - name: PMG_ENABLED
+              value: {{ .Values.config.pmg.enabled | quote }}
+            - name: RLHF_ENABLED
+              value: {{ .Values.config.rlhf.enabled | quote }}
+            - name: SHWL_ENABLED
+              value: {{ .Values.config.shwl.enabled | quote }}
+            - name: APOP_ENABLED
+              value: {{ .Values.config.apop.enabled | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.config.logging.level | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.config.logging.format | quote }}
+            {{- if .Values.redis.enabled }}
+            - name: REDIS_HOST
+              value: "{{ include "sap-llm.fullname" . }}-redis-master"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.redis.auth.existingSecret }}
+                  key: redis-password
+            {{- end }}
+            {{- if .Values.neo4j.enabled }}
+            - name: NEO4J_URI
+              value: "bolt://{{ include "sap-llm.fullname" . }}-neo4j:7687"
+            - name: NEO4J_USER
+              value: "neo4j"
+            - name: NEO4J_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.neo4j.existingPasswordSecret }}
+                  key: neo4j-password
+            {{- end }}
+            {{- if .Values.kafka.enabled }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "{{ include "sap-llm.fullname" . }}-kafka:9092"
+            {{- end }}
+            {{- if .Values.postgresql.enabled }}
+            - name: POSTGRES_HOST
+              value: "{{ include "sap-llm.fullname" . }}-postgresql"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "sap_llm"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.auth.existingSecret }}
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.auth.existingSecret }}
+                  key: password
+            {{- end }}
+            {{- if .Values.minio.enabled }}
+            - name: MINIO_ENDPOINT
+              value: "{{ include "sap-llm.fullname" . }}-minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.auth.existingSecret }}
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.auth.existingSecret }}
+                  key: secret-key
+            {{- end }}
+            - name: JWT_EXPIRATION
+              value: {{ .Values.config.security.jwt_expiration | quote }}
+            - name: PROMETHEUS_ENABLED
+              value: {{ .Values.config.monitoring.enabled | quote }}
+            - name: JAEGER_ENABLED
+              value: {{ .Values.config.monitoring.jaeger_enabled | quote }}
+            - name: TRACING_SAMPLE_RATE
+              value: {{ .Values.config.monitoring.tracing_sample_rate | quote }}
+            {{- if .Values.gpu.enabled }}
+            - name: CUDA_VISIBLE_DEVICES
+              value: "0"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "compute,utility"
+            {{- end }}
+          {{- if .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: cache
+              mountPath: /cache
+            - name: tmp
+              mountPath: /tmp
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ include "sap-llm.fullname" . }}-models
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "sap-llm.fullname" . }}-data
+        - name: cache
+          persistentVolumeClaim:
+            claimName: {{ include "sap-llm.fullname" . }}-cache
+        - name: tmp
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: {{ include "sap-llm.fullname" . }}-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

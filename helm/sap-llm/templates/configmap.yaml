@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sap-llm.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sap-llm.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    environment: {{ .Values.global.environment }}
+
+    model:
+      name: {{ .Values.config.model.name }}
+      quantization: {{ .Values.config.model.quantization }}
+      tensorrt_enabled: {{ .Values.config.triton.enabled }}
+      batch_size: {{ .Values.config.model.batch_size }}
+      max_length: {{ .Values.config.model.max_length }}
+
+    pmg:
+      enabled: {{ .Values.config.pmg.enabled }}
+      similarity_threshold: {{ .Values.config.pmg.similarity_threshold }}
+      max_similar_documents: {{ .Values.config.pmg.max_similar_documents }}
+      retraining_threshold: {{ .Values.config.pmg.retraining_threshold }}
+
+    rlhf:
+      enabled: {{ .Values.config.rlhf.enabled }}
+      ppo_iterations: {{ .Values.config.rlhf.ppo_iterations }}
+      learning_rate: {{ .Values.config.rlhf.learning_rate }}
+      kl_penalty: {{ .Values.config.rlhf.kl_penalty }}
+
+    shwl:
+      enabled: {{ .Values.config.shwl.enabled }}
+      anomaly_detection_interval: {{ .Values.config.shwl.anomaly_detection_interval }}
+      contamination_rate: {{ .Values.config.shwl.contamination_rate }}
+      recovery_strategies: {{ .Values.config.shwl.recovery_strategies | toJson }}
+
+    apop:
+      enabled: {{ .Values.config.apop.enabled }}
+      event_bus_type: {{ .Values.config.apop.event_bus_type }}
+      agent_heartbeat_ttl: {{ .Values.config.apop.agent_heartbeat_ttl }}
+      dynamic_routing: {{ .Values.config.apop.dynamic_routing }}
+
+    security:
+      jwt_expiration: {{ .Values.config.security.jwt_expiration }}
+      refresh_token_expiration: {{ .Values.config.security.refresh_token_expiration }}
+      api_key_rotation_days: {{ .Values.config.security.api_key_rotation_days }}
+      encryption_algorithm: {{ .Values.config.security.encryption_algorithm }}
+      tls_version: {{ .Values.config.security.tls_version }}
+
+    logging:
+      level: {{ .Values.config.logging.level }}
+      format: {{ .Values.config.logging.format }}
+      output: {{ .Values.config.logging.output }}
+
+    monitoring:
+      enabled: {{ .Values.config.monitoring.enabled }}
+      prometheus_port: {{ .Values.config.monitoring.prometheus_port }}
+      jaeger_enabled: {{ .Values.config.monitoring.jaeger_enabled }}
+      tracing_sample_rate: {{ .Values.config.monitoring.tracing_sample_rate }}
