@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sap-llm-config
+  namespace: sap-llm
+  labels:
+    app: sap-llm-api
+data:
+  # Application configuration
+  default_config.yaml: |
+    system:
+      environment: production
+      log_level: INFO
+      workers: 4
+
+    models:
+      vision_encoder:
+        model_name: microsoft/layoutlmv3-base
+        device: cuda
+        precision: fp16
+        batch_size: 16
+
+      language_decoder:
+        model_name: meta-llama/Llama-2-7b-hf
+        device: cuda
+        precision: int8
+        max_length: 2048
+
+      reasoning_engine:
+        model_name: mistralai/Mixtral-8x7B-v0.1
+        device: cuda
+        precision: int8
+        max_length: 4096
+
+    stages:
+      inbox:
+        cache_ttl: 86400
+        thumbnail_size: [800, 800]
+
+      preprocessing:
+        ocr_engine: easyocr
+        languages: ["en"]
+        enhance: true
+
+      classification:
+        confidence_threshold: 0.90
+
+      extraction:
+        max_retries: 2
+
+      quality_check:
+        min_quality_score: 0.90
+
+      validation:
+        strict_mode: true
+
+      routing:
+        timeout: 30
+        retry_attempts: 3
+
+    pmg:
+      enabled: true
+      vector_store_enabled: true
+      learning_enabled: true
+
+    apop:
+      signing_enabled: true
+      max_hops: 20
+
+    shwl:
+      enabled: true
+      schedule: "0 2 * * *"  # 2 AM daily
+      lookback_days: 7
+
+    performance:
+      caching:
+        enabled: true
+        ttl: 3600
+      batching:
+        enabled: true
+        batch_size: 16
+        timeout: 1.0
+      quantization:
+        enabled: true
+        method: int8

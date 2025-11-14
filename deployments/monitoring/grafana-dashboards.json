@@ -1,0 +1,363 @@
+{
+  "dashboards": [
+    {
+      "title": "SAP_LLM System Overview",
+      "uid": "sap-llm-overview",
+      "description": "High-level system metrics and health status",
+      "panels": [
+        {
+          "title": "Request Rate (requests/sec)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_requests_total[5m])",
+              "legendFormat": "{{method}} {{endpoint}}"
+            }
+          ]
+        },
+        {
+          "title": "Request Duration P95 (seconds)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(sap_llm_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "{{endpoint}}"
+            }
+          ]
+        },
+        {
+          "title": "Error Rate (%)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_errors_total[5m]) / rate(sap_llm_requests_total[5m]) * 100",
+              "legendFormat": "{{stage}}"
+            }
+          ]
+        },
+        {
+          "title": "Cache Hit Rate (%)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_cache_hit_rate * 100",
+              "legendFormat": "{{tier}}"
+            }
+          ]
+        },
+        {
+          "title": "Documents Processed (total)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sap_llm_documents_processed_total"
+            }
+          ]
+        },
+        {
+          "title": "Processing Cost ($/hour)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_processing_cost_dollars[1h]) * 3600"
+            }
+          ]
+        },
+        {
+          "title": "GPU Utilization (%)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_gpu_utilization_percent",
+              "legendFormat": "GPU {{gpu_id}}"
+            }
+          ]
+        },
+        {
+          "title": "Memory Usage (GB)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_memory_usage_bytes / 1024 / 1024 / 1024"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "SAP_LLM Pipeline Performance",
+      "uid": "sap-llm-pipeline",
+      "description": "Detailed pipeline stage metrics",
+      "panels": [
+        {
+          "title": "Stage Duration (seconds)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(sap_llm_stage_duration_seconds_bucket[5m]))",
+              "legendFormat": "{{stage}}"
+            }
+          ]
+        },
+        {
+          "title": "Stage Success Rate (%)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_stage_success_rate * 100",
+              "legendFormat": "{{stage}}"
+            }
+          ]
+        },
+        {
+          "title": "Model Inference Duration (ms)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(sap_llm_model_inference_duration_seconds_bucket[5m])) * 1000",
+              "legendFormat": "{{model_type}} - {{stage}}"
+            }
+          ]
+        },
+        {
+          "title": "Model Accuracy",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_model_accuracy",
+              "legendFormat": "{{stage}}"
+            }
+          ]
+        },
+        {
+          "title": "Errors by Stage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_errors_total[5m])",
+              "legendFormat": "{{stage}} - {{error_type}}"
+            }
+          ]
+        },
+        {
+          "title": "Cache Performance by Tier",
+          "type": "table",
+          "targets": [
+            {
+              "expr": "sap_llm_cache_hits_total",
+              "format": "table"
+            },
+            {
+              "expr": "sap_llm_cache_misses_total",
+              "format": "table"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "SAP_LLM SLO Dashboard",
+      "uid": "sap-llm-slo",
+      "description": "Service Level Objectives and error budgets",
+      "panels": [
+        {
+          "title": "Availability SLO (target: 99.99%)",
+          "type": "gauge",
+          "targets": [
+            {
+              "expr": "(1 - (rate(sap_llm_requests_total{status=~\"5..\"}[30d]) / rate(sap_llm_requests_total[30d]))) * 100"
+            }
+          ],
+          "thresholds": [
+            {"value": 0, "color": "red"},
+            {"value": 99.9, "color": "yellow"},
+            {"value": 99.99, "color": "green"}
+          ]
+        },
+        {
+          "title": "Latency P95 SLO (target: <100ms)",
+          "type": "gauge",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(sap_llm_request_duration_seconds_bucket[1h])) * 1000"
+            }
+          ],
+          "thresholds": [
+            {"value": 0, "color": "green"},
+            {"value": 100, "color": "yellow"},
+            {"value": 200, "color": "red"}
+          ]
+        },
+        {
+          "title": "Error Rate SLO (target: <1%)",
+          "type": "gauge",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_errors_total[1h]) / rate(sap_llm_requests_total[1h]) * 100"
+            }
+          ],
+          "thresholds": [
+            {"value": 0, "color": "green"},
+            {"value": 1, "color": "yellow"},
+            {"value": 5, "color": "red"}
+          ]
+        },
+        {
+          "title": "SLA Violations (30d)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "increase(sap_llm_sla_violations_total[30d])"
+            }
+          ]
+        },
+        {
+          "title": "Error Budget Remaining",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_error_budget_remaining_percent",
+              "legendFormat": "{{slo}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "SAP_LLM Cost Analytics",
+      "uid": "sap-llm-cost",
+      "description": "Cost tracking and optimization metrics",
+      "panels": [
+        {
+          "title": "Processing Cost ($/hour)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_processing_cost_dollars[1h]) * 3600",
+              "legendFormat": "Hourly Cost"
+            }
+          ]
+        },
+        {
+          "title": "Cost per Document ($)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_processing_cost_dollars[1h]) / rate(sap_llm_documents_processed_total[1h])"
+            }
+          ]
+        },
+        {
+          "title": "Monthly Cost Projection ($)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_processing_cost_dollars[24h]) * 24 * 30"
+            }
+          ]
+        },
+        {
+          "title": "Documents Processed (rate)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(sap_llm_documents_processed_total[5m]) * 60",
+              "legendFormat": "docs/min"
+            }
+          ]
+        },
+        {
+          "title": "Auto-Scaling Status",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_auto_scaler_instances",
+              "legendFormat": "Current Instances"
+            },
+            {
+              "expr": "sap_llm_auto_scaler_target_instances",
+              "legendFormat": "Target Instances"
+            }
+          ]
+        },
+        {
+          "title": "Spot Instance Savings ($)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sap_llm_spot_instance_savings_dollars"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "SAP_LLM Infrastructure",
+      "uid": "sap-llm-infra",
+      "description": "Infrastructure and resource utilization",
+      "panels": [
+        {
+          "title": "GPU Utilization (%)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_gpu_utilization_percent",
+              "legendFormat": "GPU {{gpu_id}}"
+            }
+          ]
+        },
+        {
+          "title": "GPU Memory Usage (GB)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_gpu_memory_used_bytes / 1024 / 1024 / 1024",
+              "legendFormat": "GPU {{gpu_id}}"
+            }
+          ]
+        },
+        {
+          "title": "CPU Usage (%)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_cpu_usage_percent"
+            }
+          ]
+        },
+        {
+          "title": "Memory Usage (GB)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sap_llm_memory_usage_bytes / 1024 / 1024 / 1024"
+            }
+          ]
+        },
+        {
+          "title": "Pod Count",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "count(up{job=\"sap-llm-api\"})"
+            }
+          ]
+        },
+        {
+          "title": "Network I/O (MB/s)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total[5m]) / 1024 / 1024",
+              "legendFormat": "Receive"
+            },
+            {
+              "expr": "rate(node_network_transmit_bytes_total[5m]) / 1024 / 1024",
+              "legendFormat": "Transmit"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

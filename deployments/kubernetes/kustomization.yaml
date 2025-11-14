@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sap-llm
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - redis-deployment.yaml
+  - mongo-deployment.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+
+# Secrets should be applied separately or use sealed-secrets
+# - secrets.yaml
+
+commonLabels:
+  project: sap-llm
+  managed-by: kustomize
+
+images:
+  - name: sap-llm
+    newName: your-registry.azurecr.io/sap-llm
+    newTag: latest
+
+configMapGenerator:
+  - name: sap-llm-env-config
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+
+replicas:
+  - name: sap-llm-api
+    count: 3
