@@ -16,6 +16,24 @@ from sap_llm.optimization.cost_optimizer import (
     cost_optimizer,
 )
 
+from sap_llm.optimization.quantization import (
+    ModelQuantizer,
+    QuantizationConfig,
+)
+
+from sap_llm.optimization.tensorrt_converter import (
+    TensorRTConverter,
+)
+
+from sap_llm.optimization.pruning import (
+    ModelPruner,
+)
+
+from sap_llm.optimization.distillation import (
+    KnowledgeDistiller,
+    DistillationConfig,
+)
+
 __all__ = [
     "ModelOptimizer",
     "FastInferenceEngine",
@@ -27,4 +45,10 @@ __all__ = [
     "CostMetrics",
     "ScalingDecision",
     "cost_optimizer",
+    "ModelQuantizer",
+    "QuantizationConfig",
+    "TensorRTConverter",
+    "ModelPruner",
+    "KnowledgeDistiller",
+    "DistillationConfig",
 ]
