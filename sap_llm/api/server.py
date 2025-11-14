@@ -45,6 +45,7 @@ from sap_llm.stages.routing import RoutingStage
 from sap_llm.pmg.graph_client import ProcessMemoryGraph
 from sap_llm.apop.envelope import APOPEnvelope
 from sap_llm.apop.signature import APOPSignature
+from sap_llm.monitoring.observability import observability
 from sap_llm.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -235,6 +236,32 @@ def create_app(config_path: Optional[str] = None) -> FastAPI:
     )
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+    # Add monitoring middleware
+    @app.middleware("http")
+    async def monitoring_middleware(request: Request, call_next):
+        """Track all HTTP requests with metrics."""
+        start_time = time.time()
+
+        # Process request
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+        except Exception as e:
+            logger.error(f"Request failed: {e}")
+            status_code = 500
+            raise
+        finally:
+            # Record metrics
+            duration = time.time() - start_time
+            observability.metrics.record_request(
+                method=request.method,
+                endpoint=request.url.path,
+                status=status_code,
+                duration=duration
+            )
+
+        return response
+
     # Add rate limiting
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -394,6 +421,13 @@ async def process_document_pipeline(
 
     except Exception as e:
         logger.error(f"Document processing failed: {e}", exc_info=True)
+
+        # Record error metrics
+        error_stage = processing_jobs[job_id].get("current_stage", "unknown")
+        observability.metrics.record_error(
+            error_type=type(e).__name__,
+            stage=error_stage
+        )
 
         processing_jobs[job_id]["status"] = "failed"
         processing_jobs[job_id]["error"] = str(e)
@@ -711,6 +745,26 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
         # Cleanup
         if job_id in websocket_connections:
             del websocket_connections[job_id]
+
+
+@app.get("/metrics", tags=["Monitoring"])
+async def metrics():
+    """
+    Prometheus metrics endpoint.
+
+    Returns metrics in Prometheus exposition format for scraping.
+    """
+    return observability.get_prometheus_metrics()
+
+
+@app.get("/v1/slo", tags=["Monitoring"])
+async def get_slo_status():
+    """
+    Get SLO status and error budgets.
+
+    Returns current SLO compliance and remaining error budgets.
+    """
+    return observability.get_slo_status()
 
 
 @app.get("/v1/stats", tags=["Monitoring"])
