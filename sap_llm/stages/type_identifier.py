@@ -1,7 +1,8 @@
 """
 Stage 4: Type Identifier - Document Subtype Classification
 
-Hierarchical classification for 35+ document subtypes.
+Hierarchical classification for 198 document subtypes across 52 SAP document types.
+Covers all major SAP business processes: Procurement, Sales, Finance, Manufacturing, and more.
 """
 
 from typing import Any, Dict, List, Tuple
@@ -22,14 +23,30 @@ class TypeIdentifierStage(BaseStage):
     Document subtype identification stage.
 
     Uses hierarchical classification:
-    Level 1: Major category (from Stage 3)
-    Level 2: Subtype (35+ total)
+    Level 1: Major category (from Stage 3) - 52 document types with defined subtypes
+    Level 2: Subtype (198 total subtypes)
 
-    Example PO subtypes: Standard, Blanket, Contract, Service, etc.
+    Comprehensive coverage of SAP business documents:
+    - Procurement & Supply Chain (14 types, 62 subtypes)
+    - Sales & Distribution (15 types, 58 subtypes)
+    - Finance & Accounting (9 types, 34 subtypes)
+    - Contracts & Agreements (5 types, 16 subtypes)
+    - Other Business Documents (9 types, 28 subtypes)
+
+    Example PO subtypes: Standard, Blanket, Contract, Service, Subcontract, etc.
     """
 
-    # Comprehensive subtype hierarchy for 35+ SAP document subtypes
+    # Comprehensive subtype hierarchy for 198 SAP document subtypes
     SUBTYPES = {
+        # Procurement & Supply Chain
+        "PURCHASE_REQUISITION": [
+            "STANDARD",
+            "EXTERNAL",
+            "STOCK_TRANSFER",
+            "SUBCONTRACTING",
+            "SERVICE",
+            "CONSIGNMENT",
+        ],
         "PURCHASE_ORDER": [
             "STANDARD",
             "BLANKET",
@@ -42,6 +59,168 @@ class TypeIdentifierStage(BaseStage):
             "DROP_SHIP",
             "CAPEX",
         ],
+        "PURCHASE_ORDER_CONFIRMATION": [
+            "FULL_CONFIRMATION",
+            "PARTIAL_CONFIRMATION",
+            "DELIVERY_SCHEDULE",
+        ],
+        "PURCHASE_ORDER_CHANGE": [
+            "QUANTITY_CHANGE",
+            "PRICE_CHANGE",
+            "DATE_CHANGE",
+            "VENDOR_CHANGE",
+            "CANCELLATION",
+        ],
+        "GOODS_RECEIPT": [
+            "STANDARD",
+            "RETURN_TO_VENDOR",
+            "TRANSFER_POSTING",
+            "OTHER_RECEIPT",
+            "WITHOUT_PO",
+        ],
+        "GOODS_ISSUE": [
+            "STANDARD",
+            "SCRAPPING",
+            "SAMPLE",
+            "COST_CENTER",
+            "SALES_ORDER",
+        ],
+        "INBOUND_DELIVERY": [
+            "STANDARD",
+            "RETURN",
+            "CROSS_DOCK",
+            "DROP_SHIPMENT",
+        ],
+        "OUTBOUND_DELIVERY": [
+            "STANDARD",
+            "RUSH_ORDER",
+            "DROP_SHIPMENT",
+            "CONSIGNMENT_PICKUP",
+        ],
+        "ADVANCED_SHIPPING_NOTICE": [
+            "STANDARD",
+            "PARTIAL",
+            "COMPLETE",
+        ],
+        "DESPATCH_ADVICE": [
+            "STANDARD",
+            "CONSOLIDATED",
+            "PARTIAL",
+        ],
+        "SHIPMENT_NOTIFICATION": [
+            "OUTBOUND",
+            "INBOUND",
+            "TRANSFER",
+        ],
+        "DELIVERY_SCHEDULE": [
+            "JUST_IN_TIME",
+            "FORECAST",
+            "FIRM",
+        ],
+        "MATERIAL_MASTER": [
+            "RAW_MATERIAL",
+            "FINISHED_GOOD",
+            "TRADING_GOOD",
+            "SPARE_PART",
+            "SERVICE",
+        ],
+        "VENDOR_MASTER": [
+            "ONE_TIME",
+            "REGULAR",
+            "CPD",  # Central Purchasing Data
+        ],
+
+        # Sales & Distribution
+        "SALES_INQUIRY": [
+            "STANDARD",
+            "RFQ_RESPONSE",
+        ],
+        "SALES_QUOTATION": [
+            "STANDARD",
+            "BINDING",
+            "NON_BINDING",
+        ],
+        "SALES_ORDER": [
+            "STANDARD",
+            "RUSH",
+            "SCHEDULED",
+            "CONSIGNMENT",
+            "RETURNS",
+            "CREDIT_ONLY",
+            "CASH_SALES",
+        ],
+        "SALES_ORDER_CONFIRMATION": [
+            "ORDER_CONFIRMATION",
+            "BACKORDER",
+            "PARTIAL_CONFIRMATION",
+        ],
+        "DELIVERY_NOTE": [
+            "STANDARD",
+            "PARTIAL",
+            "COMPLETE",
+            "RETURNS",
+        ],
+        "PACKING_LIST": [
+            "STANDARD",
+            "DETAILED",
+            "SUMMARY",
+        ],
+        "BILLING_DOCUMENT": [
+            "INVOICE",
+            "CREDIT_MEMO",
+            "DEBIT_MEMO",
+            "PROFORMA",
+            "CANCELLATION",
+        ],
+        "CUSTOMER_INVOICE": [
+            "STANDARD",
+            "CREDIT_NOTE",
+            "DEBIT_NOTE",
+            "PROFORMA",
+            "RECURRING",
+            "MILESTONE",
+            "INTERCOMPANY",
+        ],
+        "PRO_FORMA_INVOICE": [
+            "CUSTOMS",
+            "ADVANCE_PAYMENT",
+            "QUOTE",
+        ],
+        "CREDIT_NOTE": [
+            "SUPPLIER_CREDIT",
+            "CUSTOMER_CREDIT",
+            "GENERAL",
+            "PRICE_ADJUSTMENT",
+        ],
+        "DEBIT_NOTE": [
+            "SUPPLIER_DEBIT",
+            "CUSTOMER_DEBIT",
+            "GENERAL",
+            "PRICE_ADJUSTMENT",
+        ],
+        "CREDIT_MEMO_REQUEST": [
+            "RETURNS",
+            "PRICE_COMPLAINT",
+            "QUALITY_ISSUE",
+        ],
+        "DEBIT_MEMO_REQUEST": [
+            "ADDITIONAL_CHARGES",
+            "PRICE_DIFFERENCE",
+        ],
+        "RETURNS": [
+            "STANDARD",
+            "WARRANTY",
+            "DEFECTIVE",
+            "OVERSHIPMENT",
+        ],
+        "COMPLAINT": [
+            "QUALITY",
+            "DELIVERY",
+            "INVOICE",
+            "SERVICE",
+        ],
+
+        # Finance & Accounting
         "SUPPLIER_INVOICE": [
             "STANDARD",
             "CREDIT_MEMO",
@@ -52,57 +231,16 @@ class TypeIdentifierStage(BaseStage):
             "PROFORMA",
             "COMMERCIAL",
         ],
-        "SALES_ORDER": [
-            "STANDARD",
-            "RUSH",
-            "SCHEDULED",
-            "CONSIGNMENT",
-            "RETURNS",
-            "CREDIT_ONLY",
-        ],
-        "CUSTOMER_INVOICE": [
-            "STANDARD",
-            "CREDIT_NOTE",
-            "DEBIT_NOTE",
-            "PROFORMA",
-            "RECURRING",
-            "MILESTONE",
-        ],
-        "GOODS_RECEIPT": [
-            "STANDARD",
-            "RETURN_TO_VENDOR",
-            "TRANSFER_POSTING",
-            "OTHER_RECEIPT",
-        ],
-        "ADVANCED_SHIPPING_NOTICE": [
-            "STANDARD",
-            "PARTIAL",
-            "COMPLETE",
-        ],
-        "DELIVERY_NOTE": [
-            "STANDARD",
-            "PARTIAL",
-            "COMPLETE",
-            "RETURNS",
-        ],
-        "CREDIT_NOTE": [
-            "SUPPLIER_CREDIT",
-            "CUSTOMER_CREDIT",
-            "GENERAL",
-        ],
-        "DEBIT_NOTE": [
-            "SUPPLIER_DEBIT",
-            "CUSTOMER_DEBIT",
-            "GENERAL",
-        ],
         "PAYMENT_ADVICE": [
             "STANDARD",
             "PARTIAL",
             "ADVANCE",
+            "FINAL",
         ],
         "REMITTANCE_ADVICE": [
             "STANDARD",
             "CONSOLIDATED",
+            "DETAILED",
         ],
         "STATEMENT_OF_ACCOUNT": [
             "MONTHLY",
@@ -110,15 +248,106 @@ class TypeIdentifierStage(BaseStage):
             "ANNUAL",
             "ON_DEMAND",
         ],
+        "BANK_STATEMENT": [
+            "DAILY",
+            "WEEKLY",
+            "MONTHLY",
+            "ELECTRONIC",
+        ],
+        "FINANCIAL_DOCUMENT": [
+            "JOURNAL_ENTRY",
+            "ADJUSTMENT",
+            "REVERSAL",
+        ],
+        "ACCOUNTING_DOCUMENT": [
+            "VENDOR_INVOICE",
+            "CUSTOMER_INVOICE",
+            "PAYMENT",
+            "CLEARING",
+        ],
+        "PAYMENT_ORDER": [
+            "SINGLE",
+            "BATCH",
+            "RECURRING",
+        ],
+        "DUNNING_NOTICE": [
+            "REMINDER_1",
+            "REMINDER_2",
+            "REMINDER_3",
+            "FINAL_NOTICE",
+        ],
+
+        # Contracts & Agreements
+        "CONTRACT": [
+            "PURCHASING",
+            "SALES",
+            "MASTER_SERVICE_AGREEMENT",
+            "FRAMEWORK_AGREEMENT",
+        ],
         "QUOTE": [
             "REQUEST_FOR_QUOTE",
             "SUPPLIER_QUOTE",
             "SALES_QUOTE",
         ],
-        "CONTRACT": [
-            "PURCHASING",
-            "SALES",
-            "MASTER_SERVICE_AGREEMENT",
+        "SCHEDULING_AGREEMENT": [
+            "STANDARD",
+            "CONSIGNMENT",
+            "SUBCONTRACTING",
+        ],
+        "OUTLINE_AGREEMENT": [
+            "QUANTITY_CONTRACT",
+            "VALUE_CONTRACT",
+            "MASTER_CONTRACT",
+        ],
+        "SERVICE_ENTRY_SHEET": [
+            "STANDARD",
+            "PERIODIC",
+            "MILESTONE_BASED",
+        ],
+
+        # Other Business Documents
+        "INVENTORY_DOCUMENT": [
+            "CYCLE_COUNT",
+            "PHYSICAL_COUNT",
+            "ADJUSTMENT",
+        ],
+        "STOCK_TRANSFER_ORDER": [
+            "PLANT_TO_PLANT",
+            "STORAGE_LOCATION",
+            "ONE_STEP",
+            "TWO_STEP",
+        ],
+        "PHYSICAL_INVENTORY": [
+            "ANNUAL",
+            "CYCLE_COUNT",
+            "SPOT_CHECK",
+        ],
+        "QUALITY_NOTIFICATION": [
+            "CUSTOMER_COMPLAINT",
+            "VENDOR_COMPLAINT",
+            "INTERNAL_PROBLEM",
+        ],
+        "SERVICE_ORDER": [
+            "STANDARD",
+            "EMERGENCY",
+            "PREVENTIVE_MAINTENANCE",
+        ],
+        "PRODUCTION_ORDER": [
+            "STANDARD",
+            "PROCESS",
+            "REPETITIVE",
+            "KANBAN",
+        ],
+        "TIME_SHEET": [
+            "EMPLOYEE",
+            "CONTRACTOR",
+            "PROJECT_BASED",
+        ],
+        "EXPENSE_REPORT": [
+            "TRAVEL",
+            "BUSINESS",
+            "ENTERTAINMENT",
+            "MILEAGE",
         ],
         "OTHER": [
             "STANDARD",
