@@ -5,6 +5,7 @@ Implements API key-based authentication with role-based access control.
 """
 
 import hashlib
+import os
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
@@ -21,7 +22,11 @@ logger = get_logger(__name__)
 
 # Security settings
 API_KEY_HEADER = "X-API-Key"
-SECRET_KEY = secrets.token_urlsafe(32)  # TODO: Load from config
+# Load from environment variable or generate a new one (not recommended for production)
+SECRET_KEY = os.getenv("API_SECRET_KEY")
+if not SECRET_KEY:
+    logger.warning("API_SECRET_KEY not set in environment. Using generated key (not suitable for production!)")
+    SECRET_KEY = secrets.token_urlsafe(32)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 

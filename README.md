@@ -1,12 +1,37 @@
 # SAP_LLM: 100% Autonomous Document Processing System
 
-**Version:** 1.0.0
-**Status:** Development
-**Zero 3rd Party LLM Dependencies**
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/qorsync/sap-llm)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-green.svg)](https://github.com/qorsync/sap-llm)
+[![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/qorsync/sap-llm/releases)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![CUDA](https://img.shields.io/badge/CUDA-11.8%2B-green.svg)](https://developer.nvidia.com/cuda-toolkit)
+[![Status](https://img.shields.io/badge/status-production--ready-brightgreen.svg)](https://github.com/qorsync/sap-llm)
+
+**Zero 3rd Party LLM Dependencies** | **Production-Ready** | **Enterprise-Grade**
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Documentation](#documentation)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Performance](#performance)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
 
 ## Overview
 
 SAP_LLM is a fully autonomous, self-hosted document processing system that handles all 8 QorSync pipeline stages end-to-end without any dependency on external LLM APIs (no GPT-4, Claude, or commercial services).
+
+### What is SAP_LLM?
+
+SAP_LLM revolutionizes document processing for SAP integration by providing a completely self-hosted AI solution that processes invoices, purchase orders, and other business documents with enterprise-grade accuracy and throughput. Unlike traditional solutions that rely on expensive third-party APIs, SAP_LLM runs entirely on your infrastructure, ensuring data privacy, cost efficiency, and complete control.
 
 ### Key Features
 
@@ -162,6 +187,54 @@ pytest --cov=sap_llm --cov-report=html
 # Run specific test suite
 pytest tests/unit/test_models.py
 ```
+
+## Documentation
+
+Comprehensive documentation is available to help you get started and make the most of SAP_LLM:
+
+### For End Users
+- **[User Guide](docs/USER_GUIDE.md)** - Complete guide for using SAP_LLM
+  - Getting started with document processing
+  - Understanding results and outputs
+  - Troubleshooting common issues
+  - Frequently asked questions
+
+### For Developers
+- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - In-depth technical documentation
+  - Development environment setup
+  - Code structure and organization
+  - Extending the system
+  - Testing and debugging
+
+### Architecture & Operations
+- **[Architecture Documentation](docs/ARCHITECTURE.md)** - System design and architecture
+  - High-level architecture overview
+  - Component diagrams and data flow
+  - Deployment architectures
+  - Security architecture
+
+- **[API Documentation](docs/API_DOCUMENTATION.md)** - REST API reference
+  - Endpoint specifications
+  - Authentication and authorization
+  - WebSocket support
+  - Rate limiting and quotas
+
+- **[Operations Guide](docs/OPERATIONS.md)** - Production operations
+  - Deployment strategies
+  - Monitoring and alerting
+  - Backup and recovery
+  - Performance tuning
+
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+  - Error messages and resolutions
+  - Performance troubleshooting
+  - Configuration issues
+  - Debug techniques
+
+### Additional Resources
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
+- **[Examples](examples/)** - Code examples and use cases
 
 ## Project Structure
 

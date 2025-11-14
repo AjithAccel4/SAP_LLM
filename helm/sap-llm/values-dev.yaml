@@ -1,0 +1,307 @@
+# Development Environment Values
+# Optimized for local development and testing
+
+global:
+  environment: development
+  region: us-east-1
+  imageRegistry: ghcr.io
+  imagePullSecrets:
+    - name: ghcr-secret
+
+image:
+  repository: ghcr.io/ajithaccel4/sap_llm
+  tag: "dev-latest"
+  pullPolicy: Always
+
+# Minimal replicas for dev
+replicaCount: 1
+
+# Disable PDB for dev (single replica)
+podDisruptionBudget:
+  enabled: false
+
+# Minimal autoscaling for dev
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 85
+
+# Reduced resources for dev
+resources:
+  requests:
+    cpu: "1"
+    memory: "4Gi"
+    nvidia.com/gpu: "0"  # No GPU required for dev
+  limits:
+    cpu: "2"
+    memory: "8Gi"
+    nvidia.com/gpu: "0"
+
+# GPU disabled for dev
+gpu:
+  enabled: false
+  type: "none"
+  driver: ""
+  runtimeClass: ""
+
+# No special node requirements
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Service configuration
+service:
+  type: NodePort
+  port: 8000
+  targetPort: 8000
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+
+# Ingress disabled for dev (use port-forward)
+ingress:
+  enabled: false
+
+# Application configuration - dev mode
+config:
+  model:
+    name: "qwen25vl-sap-llm-v1-dev"
+    path: "/models/qwen25vl-sap-llm"
+    quantization: "none"
+    tensorrt: false
+    batch_size: 1
+    max_length: 512
+
+  triton:
+    enabled: false
+    instances: 1
+    max_batch_size: 2
+
+  pmg:
+    enabled: true
+    similarity_threshold: 0.80
+    max_similar_documents: 5
+    retraining_threshold: 100
+
+  rlhf:
+    enabled: false  # Disabled for dev
+    reward_model_path: ""
+
+  shwl:
+    enabled: true
+    anomaly_detection_interval: 600
+    contamination_rate: 0.1
+    recovery_strategies:
+      - retry_with_preprocessing
+
+  apop:
+    enabled: false  # Disabled for dev
+    event_bus_type: kafka
+    agent_heartbeat_ttl: 60
+
+  security:
+    jwt_expiration: 7200  # 2 hours for dev
+    refresh_token_expiration: 86400  # 1 day
+    api_key_rotation_days: 365
+    encryption_algorithm: "AES-256-GCM"
+    tls_version: "1.2"
+
+  logging:
+    level: DEBUG  # Verbose logging for dev
+    format: json
+    output: stdout
+
+  monitoring:
+    enabled: true
+    prometheus_port: 9090
+    jaeger_enabled: false
+    tracing_sample_rate: 1.0  # Full tracing for dev
+
+# Use embedded/minimal dependencies for dev
+redis:
+  enabled: true
+  architecture: standalone
+  master:
+    persistence:
+      enabled: false  # No persistence for dev
+  auth:
+    enabled: false  # Simplified for dev
+
+neo4j:
+  enabled: true
+  core:
+    numberOfServers: 1
+  readReplica:
+    numberOfServers: 0
+  volumes:
+    data:
+      mode: dynamic
+      dynamic:
+        storageClassName: standard
+        requests:
+          storage: 10Gi
+  dbms:
+    memory:
+      heap:
+        initial_size: "512M"
+        max_size: "1G"
+      pagecache:
+        size: "512M"
+  config:
+    dbms.security.auth_enabled: "false"  # Simplified for dev
+
+kafka:
+  enabled: false  # Disabled for dev
+
+qdrant:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: false
+    size: 10Gi
+  resources:
+    requests:
+      cpu: "0.5"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+
+minio:
+  enabled: true
+  mode: standalone
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: "0.5"
+      memory: "1Gi"
+
+postgresql:
+  enabled: true
+  architecture: standalone
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: standard
+  auth:
+    existingSecret: sap-llm-postgres-secret
+  metrics:
+    enabled: false
+
+# Minimal persistent volumes
+persistence:
+  models:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 50Gi
+    mountPath: /models
+  data:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    mountPath: /data
+  cache:
+    enabled: false  # Disabled for dev
+
+# Relaxed health checks for dev
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 5
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+# Relaxed security for dev
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: sap-llm-dev
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+
+# Network policies disabled for dev
+networkPolicy:
+  enabled: false
+
+# Monitoring minimal for dev
+prometheus:
+  enabled: false
+
+grafana:
+  enabled: false
+
+jaeger:
+  enabled: false
+
+# Backup disabled for dev
+backup:
+  enabled: false
+
+# Canary disabled for dev
+canary:
+  enabled: false
+
+# Feature flags - minimal for dev
+features:
+  pmg_enabled: true
+  rlhf_enabled: false
+  shwl_enabled: true
+  apop_enabled: false
+  multilingual_enabled: false
+  federated_learning_enabled: false
+  online_learning_enabled: false
+
+# Init containers configuration
+initContainers:
+  modelDownloader:
+    enabled: true
+    image: ""  # Uses main image
+    pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"

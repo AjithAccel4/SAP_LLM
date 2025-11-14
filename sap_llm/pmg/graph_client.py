@@ -364,6 +364,106 @@ class ProcessMemoryGraph:
             logger.error(f"Failed to get document: {e}")
             return None
 
+    def get_workflow_by_correlation_id(
+        self, correlation_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve workflow history by correlation ID.
+
+        Args:
+            correlation_id: Correlation ID to search for
+
+        Returns:
+            Workflow history with steps and status
+        """
+        if self.mock_mode:
+            logger.debug(f"[MOCK] Getting workflow for correlation_id: {correlation_id}")
+            return None
+
+        try:
+            # Query for documents with correlation_id in their metadata
+            # Note: This assumes correlation_id is stored in adc_json or as a property
+            query = f"""
+            g.V().hasLabel('Document')
+              .has('id', '{correlation_id}')
+              .project('document', 'routing_decisions', 'responses', 'exceptions')
+              .by(valueMap())
+              .by(out('ROUTED_TO').valueMap().fold())
+              .by(out('ROUTED_TO').out('GOT_RESPONSE').valueMap().fold())
+              .by(out('RAISED_EXCEPTION').valueMap().fold())
+            """
+
+            results = self._execute_query(query)
+
+            if results and len(results) > 0:
+                result = results[0]
+
+                # Parse the workflow data
+                document = self._parse_vertex(result.get("document", {}))
+                routing_decisions = [
+                    self._parse_vertex(r) for r in result.get("routing_decisions", [])
+                ]
+                responses = [
+                    self._parse_vertex(r) for r in result.get("responses", [])
+                ]
+                exceptions = [
+                    self._parse_vertex(e) for e in result.get("exceptions", [])
+                ]
+
+                return {
+                    "correlation_id": correlation_id,
+                    "document": document,
+                    "routing_decisions": routing_decisions,
+                    "responses": responses,
+                    "exceptions": exceptions,
+                }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get workflow by correlation_id: {e}")
+            return None
+
+    def get_workflow_steps(
+        self, correlation_id: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Get ordered workflow steps by correlation ID.
+
+        Args:
+            correlation_id: Correlation ID
+
+        Returns:
+            List of workflow steps in chronological order
+        """
+        if self.mock_mode:
+            logger.debug(f"[MOCK] Getting workflow steps for: {correlation_id}")
+            return []
+
+        try:
+            workflow = self.get_workflow_by_correlation_id(correlation_id)
+
+            if not workflow:
+                return []
+
+            # Build step history from routing decisions
+            steps = []
+            for idx, decision in enumerate(workflow.get("routing_decisions", [])):
+                step = {
+                    "step_number": idx + 1,
+                    "endpoint": decision.get("endpoint", "unknown"),
+                    "timestamp": decision.get("timestamp"),
+                    "confidence": decision.get("confidence", 0.0),
+                    "status": "completed",
+                }
+                steps.append(step)
+
+            return steps
+
+        except Exception as e:
+            logger.error(f"Failed to get workflow steps: {e}")
+            return []
+
     def _execute_query(self, query: str) -> List[Any]:
         """Execute Gremlin query."""
         if self.client is None:

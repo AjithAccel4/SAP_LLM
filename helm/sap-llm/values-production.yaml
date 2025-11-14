@@ -1,0 +1,683 @@
+# Production Environment Values
+# Maximum performance, availability, and security
+
+global:
+  environment: production
+  region: us-east-1
+  imageRegistry: ghcr.io
+  imagePullSecrets:
+    - name: ghcr-secret
+
+image:
+  repository: ghcr.io/ajithaccel4/sap_llm
+  tag: "1.0.0"  # Use specific version tags in production
+  pullPolicy: IfNotPresent
+
+# High availability replicas
+replicaCount: 5
+
+# Strict PDB for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
+
+# Aggressive autoscaling for production
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+  metrics:
+    - type: Resource
+      resource:
+        name: nvidia.com/gpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600  # 10 minutes
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 120
+        - type: Pods
+          value: 2
+          periodSeconds: 120
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 5
+          periodSeconds: 15
+      selectPolicy: Max
+
+# Maximum resources for production
+resources:
+  requests:
+    cpu: "8"
+    memory: "32Gi"
+    nvidia.com/gpu: "1"  # H100 GPU
+  limits:
+    cpu: "16"
+    memory: "64Gi"
+    nvidia.com/gpu: "1"
+
+# GPU configuration for production
+gpu:
+  enabled: true
+  type: "nvidia-h100-80gb"
+  driver: "535.104.05"
+  runtimeClass: nvidia
+
+# Strict node selector for production
+nodeSelector:
+  accelerator: nvidia-h100
+  node-type: gpu-inference
+  environment: production
+  zone: stable
+
+# Tolerations for GPU nodes
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+  - key: production
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+
+# Strict pod anti-affinity for production
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - sap-llm
+        topologyKey: kubernetes.io/hostname
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - sap-llm
+        topologyKey: topology.kubernetes.io/zone
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: node-type
+              operator: In
+              values:
+                - gpu-inference
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+
+# Production ingress with full security
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/enable-owasp-core-rules: "true"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
+  hosts:
+    - host: sap-llm.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: api.sap-llm.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: sap-llm-prod-tls
+      hosts:
+        - sap-llm.example.com
+        - api.sap-llm.example.com
+
+# Application configuration - production optimized
+config:
+  model:
+    name: "qwen25vl-sap-llm-v1"
+    path: "/models/qwen25vl-sap-llm"
+    quantization: "int8"
+    tensorrt: true
+    batch_size: 8
+    max_length: 2048
+
+  triton:
+    enabled: true
+    instances: 4
+    max_batch_size: 16
+    preferred_batch_sizes: [4, 8, 16]
+    max_queue_delay_microseconds: 50
+
+  pmg:
+    enabled: true
+    similarity_threshold: 0.85
+    max_similar_documents: 10
+    retraining_threshold: 500
+
+  rlhf:
+    enabled: true
+    reward_model_path: "/models/reward_model_v1"
+    ppo_iterations: 1000
+    learning_rate: 1e-6
+    kl_penalty: 0.05
+
+  shwl:
+    enabled: true
+    anomaly_detection_interval: 300
+    contamination_rate: 0.05
+    recovery_strategies:
+      - retry_with_preprocessing
+      - route_to_manual_review
+      - apply_tolerance_rules
+
+  apop:
+    enabled: true
+    event_bus_type: kafka
+    agent_heartbeat_ttl: 30
+    dynamic_routing: true
+
+  security:
+    jwt_expiration: 3600
+    refresh_token_expiration: 604800
+    api_key_rotation_days: 90
+    encryption_algorithm: "AES-256-GCM"
+    tls_version: "1.3"
+
+  logging:
+    level: INFO
+    format: json
+    output: stdout
+
+  monitoring:
+    enabled: true
+    prometheus_port: 9090
+    jaeger_enabled: true
+    tracing_sample_rate: 0.1  # 10% sampling in production
+
+# Redis - highly available
+redis:
+  enabled: true
+  architecture: replication
+  master:
+    persistence:
+      enabled: true
+      size: 100Gi
+      storageClass: fast-ssd
+  replica:
+    replicaCount: 3
+    persistence:
+      enabled: true
+      size: 100Gi
+      storageClass: fast-ssd
+  auth:
+    enabled: true
+    existingSecret: sap-llm-redis-secret
+  sentinel:
+    enabled: true
+    downAfterMilliseconds: 5000
+    failoverTimeout: 10000
+
+# Neo4j - production cluster
+neo4j:
+  enabled: true
+  core:
+    numberOfServers: 5
+  readReplica:
+    numberOfServers: 3
+  volumes:
+    data:
+      mode: dynamic
+      dynamic:
+        storageClassName: fast-ssd
+        requests:
+          storage: 1Ti
+  dbms:
+    memory:
+      heap:
+        initial_size: "16G"
+        max_size: "32G"
+      pagecache:
+        size: "32G"
+  services:
+    neo4j:
+      enabled: true
+      spec:
+        type: ClusterIP
+  config:
+    dbms.security.auth_enabled: "true"
+    dbms.connector.bolt.thread_pool_max_size: "400"
+    dbms.tx_log.rotation.retention_policy: "7 days"
+    dbms.checkpoint.interval.time: "15m"
+  existingPasswordSecret: sap-llm-neo4j-secret
+
+# Kafka - production cluster
+kafka:
+  enabled: true
+  replicaCount: 5
+  persistence:
+    enabled: true
+    size: 1Ti
+    storageClass: fast-ssd
+  zookeeper:
+    enabled: true
+    replicaCount: 5
+    persistence:
+      enabled: true
+      size: 200Gi
+      storageClass: fast-ssd
+  kraft:
+    enabled: false
+  listeners:
+    client:
+      protocol: SASL_SSL
+    controller:
+      protocol: SASL_SSL
+    interbroker:
+      protocol: SASL_SSL
+  auth:
+    clientProtocol: sasl
+    interBrokerProtocol: sasl
+    sasl:
+      mechanism: scram-sha-512
+  tls:
+    enabled: true
+    autoGenerated: false
+    existingSecret: sap-llm-kafka-tls
+  externalAccess:
+    enabled: false
+
+# Qdrant - production cluster
+qdrant:
+  enabled: true
+  replicaCount: 5
+  persistence:
+    enabled: true
+    size: 500Gi
+    storageClass: fast-ssd
+  resources:
+    requests:
+      cpu: "4"
+      memory: "16Gi"
+    limits:
+      cpu: "8"
+      memory: "32Gi"
+
+# MinIO - production cluster
+minio:
+  enabled: true
+  mode: distributed
+  replicas: 8
+  persistence:
+    enabled: true
+    size: 5Ti
+    storageClass: standard
+  resources:
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+    limits:
+      cpu: "4"
+      memory: "16Gi"
+  auth:
+    existingSecret: sap-llm-minio-secret
+  tls:
+    enabled: true
+    certSecret: sap-llm-minio-tls
+
+# PostgreSQL - production cluster
+postgresql:
+  enabled: true
+  architecture: replication
+  primary:
+    persistence:
+      enabled: true
+      size: 500Gi
+      storageClass: fast-ssd
+  readReplicas:
+    replicaCount: 3
+    persistence:
+      enabled: true
+      size: 500Gi
+      storageClass: fast-ssd
+  auth:
+    existingSecret: sap-llm-postgres-secret
+  metrics:
+    enabled: true
+  pgpool:
+    enabled: true
+    replicaCount: 3
+
+# Persistent volumes - production
+persistence:
+  models:
+    enabled: true
+    storageClass: fast-ssd
+    accessMode: ReadOnlyMany
+    size: 1Ti
+    mountPath: /models
+  data:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteMany
+    size: 5Ti
+    mountPath: /data
+  cache:
+    enabled: true
+    storageClass: fast-ssd
+    accessMode: ReadWriteMany
+    size: 500Gi
+    mountPath: /cache
+
+# Strict health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+    scheme: HTTP
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8000
+    scheme: HTTP
+  initialDelaySeconds: 60
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+
+# Maximum security
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  seccompProfile:
+    type: RuntimeDefault
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/sap-llm-prod-role
+  name: sap-llm-prod
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list"]
+    - apiGroups: [""]
+      resources: ["events"]
+      verbs: ["create", "patch"]
+
+# Strict network policies
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app: neo4j
+      ports:
+        - protocol: TCP
+          port: 7687
+    - to:
+        - podSelector:
+            matchLabels:
+              app: kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    - to:
+        - podSelector:
+            matchLabels:
+              app: qdrant
+      ports:
+        - protocol: TCP
+          port: 6333
+
+# Full monitoring stack
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s
+    labels:
+      release: prometheus
+  rules:
+    enabled: true
+    alerts:
+      - name: HighErrorRate
+        expr: rate(sap_llm_requests_total{status=~"5.."}[5m]) > 0.01
+        for: 5m
+        severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second"
+      - name: HighLatency
+        expr: histogram_quantile(0.95, sap_llm_request_duration_seconds_bucket) > 2
+        for: 5m
+        severity: warning
+        annotations:
+          summary: "High latency detected"
+          description: "95th percentile latency is {{ $value }} seconds"
+      - name: LowExtractionAccuracy
+        expr: sap_llm_extraction_f1_score < 0.95
+        for: 15m
+        severity: critical
+        annotations:
+          summary: "Low extraction accuracy"
+          description: "F1 score is {{ $value }}"
+      - name: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        severity: critical
+      - name: HighMemoryUsage
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        severity: warning
+      - name: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) > 0.9
+        for: 10m
+        severity: warning
+
+grafana:
+  enabled: true
+  dashboards:
+    enabled: true
+    defaultDashboardsEnabled: true
+
+jaeger:
+  enabled: true
+  agent:
+    enabled: true
+  collector:
+    enabled: true
+    replicaCount: 3
+  query:
+    enabled: true
+    replicaCount: 2
+  storage:
+    type: elasticsearch
+
+# Comprehensive backup strategy
+backup:
+  enabled: true
+  schedule: "0 1 * * *"  # Daily at 1 AM
+  retention: 90  # days
+  destinations:
+    - type: s3
+      bucket: sap-llm-prod-backups
+      region: us-east-1
+      encryption: AES256
+    - type: s3
+      bucket: sap-llm-prod-backups-dr
+      region: us-west-2
+      encryption: AES256
+
+# Canary disabled in production (use separate canary deployment)
+canary:
+  enabled: false
+
+# All features enabled in production
+features:
+  pmg_enabled: true
+  rlhf_enabled: true
+  shwl_enabled: true
+  apop_enabled: true
+  multilingual_enabled: false
+  federated_learning_enabled: false
+  online_learning_enabled: true
+
+# Init containers configuration
+initContainers:
+  modelDownloader:
+    enabled: true
+    image: ""  # Uses main image
+    pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: "2"
+        memory: "4Gi"
+      limits:
+        cpu: "4"
+        memory: "8Gi"
+  databaseMigration:
+    enabled: true
+    image: ""  # Uses main image
+    command:
+      - sh
+      - -c
+      - |
+        echo "Running database migrations..."
+        python /app/scripts/migrate.py
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+
+# Resource quotas
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "200"
+    requests.memory: "1Ti"
+    requests.nvidia.com/gpu: "50"
+    persistentvolumeclaims: "50"
+    services.loadbalancers: "5"
+
+# Priority class for production workloads
+priorityClassName: high-priority

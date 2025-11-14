@@ -4,15 +4,40 @@ Enterprise-grade Helm chart for deploying SAP_LLM document AI system with Proces
 
 ## Features
 
-- **Production-ready deployment** with auto-scaling and high availability
-- **GPU support** for NVIDIA H100 GPUs
-- **Process Memory Graph** (Neo4j + Qdrant) for continuous learning
-- **RLHF** (Reinforcement Learning from Human Feedback) for model improvement
-- **Self-Healing Workflow Loop** (SHWL) for automated error recovery
-- **APOP** (Agentic Process Orchestration Protocol) with CloudEvents
-- **Complete observability** with Prometheus, Grafana, and Jaeger
-- **Security hardening** with RBAC, network policies, and secrets management
-- **Canary deployments** for safe production rollouts
+### Production-Ready Deployment
+- ✅ **Multi-environment support** with dedicated values files (dev, staging, production)
+- ✅ **Auto-scaling** with HorizontalPodAutoscaler (CPU, memory, GPU metrics)
+- ✅ **High availability** with PodDisruptionBudget
+- ✅ **GPU support** for NVIDIA H100/A100 GPUs with TensorRT acceleration
+- ✅ **Smart init containers** for model downloads (S3, GCS, HTTP, Hugging Face)
+- ✅ **Resource quotas** and limits per environment
+
+### Advanced AI Features
+- ✅ **Process Memory Graph** (Neo4j + Qdrant) for continuous learning
+- ✅ **RLHF** (Reinforcement Learning from Human Feedback) for model improvement
+- ✅ **Self-Healing Workflow Loop** (SHWL) for automated error recovery
+- ✅ **APOP** (Autonomous Process Optimization Platform) with CloudEvents
+
+### Observability & Monitoring
+- ✅ **Prometheus integration** with ServiceMonitor
+- ✅ **Grafana dashboards** for metrics visualization
+- ✅ **Jaeger tracing** for distributed request tracing
+- ✅ **Custom alerts** for error rates, latency, and accuracy
+- ✅ **Structured JSON logging** with configurable levels
+
+### Security & Compliance
+- ✅ **Network policies** for traffic isolation
+- ✅ **RBAC** with minimal permissions
+- ✅ **Pod security standards** enforcement
+- ✅ **TLS/SSL support** with cert-manager
+- ✅ **Secrets management** integration (External Secrets, Sealed Secrets, Vault)
+- ✅ **Non-root containers** with read-only filesystems
+
+### Deployment Strategies
+- ✅ **Canary deployments** for safe production rollouts
+- ✅ **Blue-green deployment** support
+- ✅ **Rolling updates** with zero downtime
+- ✅ **Automated rollback** capabilities
 
 ## Prerequisites
 
@@ -44,11 +69,24 @@ helm install sap-llm sap-llm/sap-llm \
 git clone https://github.com/AjithAccel4/SAP_LLM.git
 cd SAP_LLM
 
-# Install the chart
+# Install the chart with environment-specific values
+# Development
 helm install sap-llm ./helm/sap-llm \
-  --namespace sap-llm \
+  --namespace sap-llm-dev \
   --create-namespace \
-  --values ./helm/sap-llm/values.yaml
+  --values ./helm/sap-llm/values-dev.yaml
+
+# Staging
+helm install sap-llm ./helm/sap-llm \
+  --namespace sap-llm-staging \
+  --create-namespace \
+  --values ./helm/sap-llm/values-staging.yaml
+
+# Production
+helm install sap-llm ./helm/sap-llm \
+  --namespace sap-llm-prod \
+  --create-namespace \
+  --values ./helm/sap-llm/values-production.yaml
 ```
 
 ### Production Installation
@@ -251,6 +289,80 @@ kubectl port-forward -n sap-llm svc/sap-llm-prometheus 9090:9090
 # View metrics
 curl http://localhost:9090/api/v1/query?query=sap_llm_extraction_f1_score
 ```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Ingress Controller                         │
+│                (TLS Termination, Rate Limiting)                 │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────┐
+│                        SAP LLM Service                          │
+│                  (ClusterIP with Metrics)                       │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+┌───────▼────────┐    ┌────────▼────────┐    ┌────────▼────────┐
+│  SAP LLM Pod   │    │  SAP LLM Pod    │    │  SAP LLM Pod    │
+│  Init:         │    │  Init:          │    │  Init:          │
+│  - Model DL    │    │  - Model DL     │    │  - Model DL     │
+│  - DB Migrate  │    │  - DB Migrate   │    │  - DB Migrate   │
+│  App:          │    │  App:           │    │  App:           │
+│  - Vision-LLM  │    │  - Vision-LLM   │    │  - Vision-LLM   │
+│  - TensorRT    │    │  - TensorRT     │    │  - TensorRT     │
+│  - Triton      │    │  - Triton       │    │  - Triton       │
+│  - GPU H100    │    │  - GPU H100     │    │  - GPU H100     │
+└────────────────┘    └─────────────────┘    └─────────────────┘
+        │                       │                       │
+        └───────────────────────┴───────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+┌───────▼────────┐    ┌────────▼────────┐    ┌────────▼────────┐
+│     Redis      │    │     Neo4j       │    │     Kafka       │
+│   (Caching)    │    │     (PMG)       │    │  (Event Bus)    │
+│   + Sentinel   │    │   + Replicas    │    │   + Zookeeper   │
+└────────────────┘    └─────────────────┘    └─────────────────┘
+        │                       │                       │
+┌───────▼────────┐    ┌────────▼────────┐    ┌────────▼────────┐
+│  PostgreSQL    │    │     MinIO       │    │     Qdrant      │
+│  (Metadata)    │    │   (Storage)     │    │   (Vectors)     │
+│  + Replicas    │    │  + Distributed  │    │   + Replicas    │
+└────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## Environment-Specific Configurations
+
+The chart includes three pre-configured environment profiles:
+
+### Development (`values-dev.yaml`)
+- **Purpose**: Local development and testing
+- **Replicas**: 1 (no autoscaling)
+- **Resources**: 1 CPU, 4GB RAM, no GPU
+- **Features**: Debug logging, relaxed security, minimal dependencies
+- **Best for**: Local testing, feature development
+
+### Staging (`values-staging.yaml`)
+- **Purpose**: Pre-production validation
+- **Replicas**: 2-10 (with autoscaling)
+- **Resources**: 2 CPU, 8GB RAM, 1 A100 GPU
+- **Features**: Production-like config, full monitoring, canary testing
+- **Best for**: Integration testing, performance validation
+
+### Production (`values-production.yaml`)
+- **Purpose**: Live production workloads
+- **Replicas**: 5-100 (aggressive autoscaling)
+- **Resources**: 8 CPU, 32GB RAM, 1 H100 GPU
+- **Features**: Maximum security, HA, comprehensive monitoring, backups
+- **Best for**: Production deployments, high-scale inference
+
+## Comprehensive Deployment Guide
+
+For detailed deployment instructions, troubleshooting, and best practices, see:
+- **[HELM_DEPLOYMENT_GUIDE.md](../HELM_DEPLOYMENT_GUIDE.md)** - Complete deployment documentation
 
 ## Troubleshooting
 

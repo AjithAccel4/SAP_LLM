@@ -5,9 +5,12 @@ Fast classification to determine if document should be processed.
 Uses lightweight ResNet-18 + BERT-tiny for quick categorization.
 """
 
+import json
+import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
+import redis
 from PIL import Image
 
 from sap_llm.stages.base_stage import BaseStage
@@ -37,7 +40,28 @@ class InboxStage(BaseStage):
         # Initialize models (lazy loading)
         self.visual_model = None
         self.text_model = None
-        self.cache = None  # Redis cache for seen documents
+
+        # Initialize Redis cache for seen documents
+        self.cache: Optional[redis.Redis] = None
+        if config and hasattr(config, 'databases') and hasattr(config.databases, 'redis'):
+            try:
+                redis_config = config.databases.redis
+                self.cache = redis.Redis(
+                    host=redis_config.get('host', 'localhost'),
+                    port=redis_config.get('port', 6379),
+                    db=redis_config.get('db', 0),
+                    password=redis_config.get('password'),
+                    decode_responses=True,
+                    socket_connect_timeout=2,
+                )
+                # Test connection
+                self.cache.ping()
+                logger.info("Redis cache initialized successfully")
+            except Exception as e:
+                logger.warning(f"Could not connect to Redis cache: {e}. Cache disabled.")
+                self.cache = None
+        else:
+            logger.info("Redis configuration not found. Cache disabled.")
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -106,8 +130,37 @@ class InboxStage(BaseStage):
 
     def _check_cache(self, doc_hash: str) -> Dict[str, Any] | None:
         """Check if document already processed."""
-        # TODO: Implement Redis cache lookup
-        return None
+        if not self.cache:
+            return None
+
+        try:
+            # Look up document in Redis cache
+            cache_key = f"sap_llm:inbox:{doc_hash}"
+            cached_data = self.cache.get(cache_key)
+
+            if cached_data:
+                logger.debug(f"Cache hit for document {doc_hash}")
+                return json.loads(cached_data)
+
+            logger.debug(f"Cache miss for document {doc_hash}")
+            return None
+        except Exception as e:
+            logger.warning(f"Error checking cache: {e}")
+            return None
+
+    def _store_in_cache(self, doc_hash: str, result: Dict[str, Any]) -> None:
+        """Store processing result in cache."""
+        if not self.cache:
+            return
+
+        try:
+            cache_key = f"sap_llm:inbox:{doc_hash}"
+            # Store with 24-hour TTL (configurable)
+            ttl = getattr(self.config.databases.redis, 'ttl', 86400) if self.config and hasattr(self.config, 'databases') else 86400
+            self.cache.setex(cache_key, ttl, json.dumps(result))
+            logger.debug(f"Stored result in cache for {doc_hash}")
+        except Exception as e:
+            logger.warning(f"Error storing in cache: {e}")
 
     def _create_thumbnail(self, document_path: str, size: int = 256) -> Image.Image:
         """Create thumbnail of first page."""
@@ -135,9 +188,30 @@ class InboxStage(BaseStage):
 
     def _extract_first_page_text(self, document_path: str, max_chars: int = 500) -> str:
         """Extract text from first page for quick analysis."""
-        # TODO: Implement fast OCR or PDF text extraction
-        # For now, return empty string
-        return ""
+        import fitz  # PyMuPDF
+
+        doc_path = Path(document_path)
+
+        try:
+            if doc_path.suffix.lower() == ".pdf":
+                # Use PyMuPDF for fast PDF text extraction (no OCR)
+                doc = fitz.open(document_path)
+                if len(doc) > 0:
+                    first_page = doc[0]
+                    text = first_page.get_text()
+                    doc.close()
+
+                    # Limit to max_chars for quick analysis
+                    return text[:max_chars].strip()
+                doc.close()
+                return ""
+            else:
+                # For images, skip text extraction at this stage
+                # Full OCR will be done in preprocessing stage
+                return ""
+        except Exception as e:
+            logger.warning(f"Could not extract text from {document_path}: {e}")
+            return ""
 
     def _classify_fast(self, thumbnail: Image.Image, text: str) -> tuple[str, float]:
         """
@@ -150,8 +224,6 @@ class InboxStage(BaseStage):
         Returns:
             (category, confidence)
         """
-        # TODO: Implement actual classification
-        # For now, return default category
         categories = [
             "INVOICE",
             "PURCHASE_ORDER",
@@ -161,9 +233,35 @@ class InboxStage(BaseStage):
             "OTHER",
         ]
 
-        # Placeholder classification
-        category = "INVOICE"
-        confidence = 0.95
+        # Use keyword-based heuristics for fast classification
+        # Full classification will be done in classification stage
+        text_lower = text.lower() if text else ""
+
+        # Simple keyword matching for initial triage
+        invoice_keywords = ["invoice", "rechnung", "factura", "bill", "amount due"]
+        po_keywords = ["purchase order", "po number", "bestellung"]
+        so_keywords = ["sales order", "order confirmation", "auftragsbestätigung"]
+        receipt_keywords = ["receipt", "quittung", "recibo"]
+
+        # Count keyword matches
+        scores = {
+            "INVOICE": sum(1 for kw in invoice_keywords if kw in text_lower),
+            "PURCHASE_ORDER": sum(1 for kw in po_keywords if kw in text_lower),
+            "SALES_ORDER": sum(1 for kw in so_keywords if kw in text_lower),
+            "RECEIPT": sum(1 for kw in receipt_keywords if kw in text_lower),
+            "STATEMENT": 1 if "statement" in text_lower else 0,
+        }
+
+        # Get category with highest score
+        max_score = max(scores.values())
+        if max_score > 0:
+            category = max(scores, key=scores.get)
+            # Confidence based on keyword matches (0.8 + 0.05 per match, max 0.99)
+            confidence = min(0.80 + (max_score * 0.05), 0.99)
+        else:
+            # No keywords found - defer to classification stage
+            category = "INVOICE"  # Default assumption
+            confidence = 0.70  # Low confidence - will be re-classified
 
         return category, confidence
 

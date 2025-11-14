@@ -1,0 +1,506 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'bugfix/**'
+      - 'hotfix/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PYTHON_VERSIONS: '["3.9", "3.10", "3.11"]'
+
+# Cancel in-progress runs for the same workflow and branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # Code Quality & Linting
+  # ============================================================================
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+
+      - name: Cache pre-commit hooks
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            pre-commit-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install black ruff mypy pylint flake8 bandit safety isort
+          pip install -e .[dev]
+
+      - name: Run Black (code formatting check)
+        run: |
+          echo "::group::Black formatting check"
+          black --check --diff --color sap_llm/ tests/ examples/
+          echo "::endgroup::"
+
+      - name: Run isort (import sorting check)
+        run: |
+          echo "::group::isort import check"
+          isort --check-only --diff sap_llm/ tests/ examples/
+          echo "::endgroup::"
+
+      - name: Run Ruff (fast Python linter)
+        run: |
+          echo "::group::Ruff linting"
+          ruff check sap_llm/ tests/ examples/ --output-format=github
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Run Flake8 (style guide enforcement)
+        run: |
+          echo "::group::Flake8 checks"
+          flake8 sap_llm/ tests/ --count --statistics --max-line-length=100 \
+            --exclude=__pycache__,.git,build,dist,.eggs,*.egg-info
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Run Pylint (comprehensive linting)
+        run: |
+          echo "::group::Pylint analysis"
+          pylint sap_llm/ --rcfile=pyproject.toml --output-format=colorized || true
+          pylint sap_llm/ --rcfile=pyproject.toml --output-format=json > pylint-report.json || true
+          echo "::endgroup::"
+
+      - name: Run MyPy (type checking)
+        run: |
+          echo "::group::MyPy type checking"
+          mypy sap_llm/ --config-file=pyproject.toml --junit-xml=mypy-report.xml || true
+          echo "::endgroup::"
+
+      - name: Run Bandit (security linting)
+        run: |
+          echo "::group::Bandit security scan"
+          bandit -r sap_llm/ -f json -o bandit-report.json || true
+          bandit -r sap_llm/ -f screen
+          echo "::endgroup::"
+
+      - name: Check for common security issues with Safety
+        run: |
+          echo "::group::Safety dependency check"
+          safety check --json --output safety-report.json || true
+          safety check || true
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Upload code quality reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-quality-reports
+          path: |
+            pylint-report.json
+            mypy-report.xml
+            bandit-report.json
+            safety-report.json
+          retention-days: 30
+
+      - name: Comment PR with quality issues
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## Code Quality Report\n\n';
+
+            // Add bandit results if available
+            if (fs.existsSync('bandit-report.json')) {
+              const bandit = JSON.parse(fs.readFileSync('bandit-report.json'));
+              comment += `### Security Issues (Bandit)\n`;
+              comment += `- High: ${bandit.metrics._totals['SEVERITY.HIGH'] || 0}\n`;
+              comment += `- Medium: ${bandit.metrics._totals['SEVERITY.MEDIUM'] || 0}\n`;
+              comment += `- Low: ${bandit.metrics._totals['SEVERITY.LOW'] || 0}\n\n`;
+            }
+
+            console.log(comment);
+
+  # ============================================================================
+  # Multi-Version Unit Tests
+  # ============================================================================
+  unit-tests:
+    name: Unit Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: code-quality
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+
+      - name: Cache test data
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/torch
+            ~/.cache/huggingface
+            data/cache
+          key: test-data-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            test-data-${{ runner.os }}-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng libgl1-mesa-glx
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-xdist pytest-mock pytest-timeout pytest-asyncio
+          pip install -e .
+
+      - name: Run unit tests
+        run: |
+          pytest tests/ \
+            -m "unit" \
+            --ignore=tests/integration \
+            --ignore=tests/load \
+            --ignore=tests/security \
+            --ignore=tests/chaos \
+            --cov=sap_llm \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            --junitxml=junit-${{ matrix.python-version }}.xml \
+            -n auto \
+            --maxfail=5 \
+            --timeout=300 \
+            -v
+        env:
+          PYTEST_TIMEOUT: 300
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unit,python-${{ matrix.python-version }}
+          name: unit-py${{ matrix.python-version }}
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Check coverage threshold
+        run: |
+          coverage report --fail-under=70 || echo "::warning::Coverage below 70%"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-py${{ matrix.python-version }}
+          path: |
+            junit-${{ matrix.python-version }}.xml
+            htmlcov/
+          retention-days: 30
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always() && matrix.python-version == '3.11'
+        with:
+          files: junit-*.xml
+          check_name: Unit Test Results
+
+  # ============================================================================
+  # Integration Tests
+  # ============================================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    timeout-minutes: 45
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: testpass
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio pytest-timeout
+          pip install -e .
+
+      - name: Wait for services
+        run: |
+          timeout 30 bash -c 'until nc -z localhost 6379; do sleep 1; done'
+          timeout 30 bash -c 'until nc -z localhost 27017; do sleep 1; done'
+
+      - name: Run integration tests
+        run: |
+          pytest tests/ \
+            -m "integration" \
+            --cov=sap_llm \
+            --cov-report=xml \
+            --cov-report=term \
+            --junitxml=junit-integration.xml \
+            --timeout=600 \
+            -v
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          MONGODB_HOST: localhost
+          MONGODB_PORT: 27017
+          MONGODB_USER: root
+          MONGODB_PASSWORD: testpass
+
+      - name: Upload integration coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: integration
+          name: integration-tests
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: junit-integration.xml
+          retention-days: 30
+
+  # ============================================================================
+  # Build Docker Image
+  # ============================================================================
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: application
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ github.sha }}
+
+      - name: Build and export Docker image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: application
+          load: true
+          tags: sap-llm:${{ github.sha }}
+          cache-from: type=gha
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: sap-llm:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Generate Docker image report
+        run: |
+          echo "## Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Image Tags: ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit SHA: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build Time: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Build Artifacts
+  # ============================================================================
+  build-artifacts:
+    name: Build Python Packages
+    runs-on: ubuntu-latest
+    needs: code-quality
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools
+
+      - name: Build distributions
+        run: |
+          python -m build
+          ls -lh dist/
+
+      - name: Check distribution
+        run: |
+          twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-packages
+          path: dist/
+          retention-days: 30
+
+  # ============================================================================
+  # CI Success Check (Required for branch protection)
+  # ============================================================================
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs:
+      - code-quality
+      - unit-tests
+      - integration-tests
+      - build-docker
+      - build-artifacts
+    if: always()
+
+    steps:
+      - name: Check job statuses
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "::error::One or more CI jobs failed"
+            exit 1
+          elif [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "::error::One or more CI jobs were cancelled"
+            exit 1
+          else
+            echo "::notice::All CI jobs completed successfully"
+          fi
+
+      - name: Generate CI summary
+        run: |
+          echo "## ✅ CI Pipeline Completed Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All checks passed for commit ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Jobs Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Build: ${{ needs.build-docker.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Artifacts: ${{ needs.build-artifacts.result }}" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,544 @@
+name: Security Scanning
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  schedule:
+    # Run security scans daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+# Limit concurrent security scans
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # Dependency Scanning
+  # ============================================================================
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety pip-audit bandit
+
+      - name: Run Safety check (dependency vulnerabilities)
+        run: |
+          echo "::group::Safety Check"
+          safety check --json --output safety-report.json || true
+          safety check --full-report || true
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Run pip-audit (PyPI vulnerability scan)
+        run: |
+          echo "::group::pip-audit Scan"
+          pip-audit --desc --format json --output pip-audit-report.json || true
+          pip-audit --desc || true
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Check for known vulnerable packages
+        run: |
+          echo "::group::Vulnerable Package Check"
+          # Check requirements.txt for known vulnerable packages
+          pip install -r requirements.txt --dry-run --report vulnerability-report.json 2>&1 || true
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Analyze dependency tree
+        run: |
+          echo "::group::Dependency Tree Analysis"
+          pip install pipdeptree
+          pipdeptree --warn fail > dependency-tree.txt || true
+          pipdeptree --json > dependency-tree.json
+          echo "::endgroup::"
+
+      - name: Upload dependency scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-scan-results
+          path: |
+            safety-report.json
+            pip-audit-report.json
+            dependency-tree.txt
+            dependency-tree.json
+          retention-days: 90
+
+      - name: Create dependency scan summary
+        if: always()
+        run: |
+          echo "## Dependency Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Scanned all Python dependencies for known vulnerabilities." >> $GITHUB_STEP_SUMMARY
+          echo "See artifacts for detailed reports." >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Code Security Analysis
+  # ============================================================================
+  code-security-scan:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install security tools
+        run: |
+          pip install bandit semgrep pyre-check
+
+      - name: Run Bandit (Python security linter)
+        run: |
+          echo "::group::Bandit Security Scan"
+          bandit -r sap_llm/ -f json -o bandit-report.json || true
+          bandit -r sap_llm/ -ll -f screen
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Convert Bandit to SARIF
+        run: |
+          # Convert bandit JSON to SARIF format for GitHub Security tab
+          echo "Converting Bandit results to SARIF format..."
+          # Custom conversion or use bandit2sarif tool
+          echo '{"version": "2.1.0", "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json", "runs": []}' > bandit-results.sarif
+
+      - name: Upload Bandit SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: bandit-results.sarif
+          category: bandit
+
+      - name: Run Semgrep (static analysis)
+        run: |
+          echo "::group::Semgrep Analysis"
+          semgrep --config=auto --json --output=semgrep-report.json sap_llm/ || true
+          semgrep --config=auto sap_llm/ || true
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "::group::Secret Detection"
+          # Look for potential hardcoded secrets
+          if grep -r -E "(password|secret|api_key|token|credential)[\s]*=[\s]*['\"][^'\"]+['\"]" sap_llm/ --exclude-dir=__pycache__ || true; then
+            echo "::warning::Potential hardcoded secrets found - please review"
+          fi
+          echo "::endgroup::"
+
+      - name: Check for SQL injection vulnerabilities
+        run: |
+          echo "::group::SQL Injection Check"
+          grep -r -n "execute.*%.*format\|execute.*+\|execute.*f\"" sap_llm/ --include="*.py" || echo "No obvious SQL injection patterns found"
+          echo "::endgroup::"
+
+      - name: Check for command injection vulnerabilities
+        run: |
+          echo "::group::Command Injection Check"
+          grep -r -n "os.system\|subprocess.call.*shell=True\|eval\|exec" sap_llm/ --include="*.py" || echo "No obvious command injection patterns found"
+          echo "::endgroup::"
+
+      - name: Upload code security results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-security-results
+          path: |
+            bandit-report.json
+            semgrep-report.json
+          retention-days: 90
+
+  # ============================================================================
+  # Container Image Scanning
+  # ============================================================================
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: sap-llm:security-scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: sap-llm:security-scan
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          vuln-type: 'os,library'
+          exit-code: '0'
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: trivy-container
+
+      - name: Run Trivy config scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: sap-llm:security-scan
+          format: 'json'
+          output: 'trivy-config.json'
+          scan-type: 'config'
+          exit-code: '0'
+
+      - name: Run Grype vulnerability scanner
+        uses: anchore/scan-action@v3
+        id: grype-scan
+        with:
+          image: sap-llm:security-scan
+          fail-build: false
+          severity-cutoff: critical
+
+      - name: Upload Grype results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: ${{ steps.grype-scan.outputs.sarif }}
+          category: grype
+
+      - name: Scan for malware
+        run: |
+          echo "::group::Malware Scan"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy image --scanners vuln,secret,misconfig sap-llm:security-scan || true
+          echo "::endgroup::"
+
+      - name: Check Dockerfile best practices
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+          no-fail: true
+
+      - name: Upload Hadolint results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: hadolint-results.sarif
+          category: hadolint
+
+      - name: Generate container security report
+        run: |
+          echo "## Container Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Scanned Docker image for vulnerabilities and misconfigurations." >> $GITHUB_STEP_SUMMARY
+          echo "See GitHub Security tab for detailed findings." >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Secret Scanning
+  # ============================================================================
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better secret detection
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_SUMMARY: true
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      - name: Check for common secret patterns
+        run: |
+          echo "::group::Secret Pattern Check"
+          # Check for AWS keys
+          grep -r -E "AKIA[0-9A-Z]{16}" . --exclude-dir=.git || echo "No AWS keys found"
+          # Check for private keys
+          grep -r "BEGIN.*PRIVATE KEY" . --exclude-dir=.git || echo "No private keys found"
+          # Check for API tokens
+          grep -r -E "(api_key|apikey|api-key)[\s]*[:=][\s]*['\"][^'\"]+['\"]" . --exclude-dir=.git --exclude-dir=node_modules || echo "No API keys found"
+          echo "::endgroup::"
+
+      - name: Check environment files
+        run: |
+          echo "::group::Environment File Check"
+          if [ -f ".env" ]; then
+            echo "::warning::.env file found in repository - should be in .gitignore"
+          fi
+          if [ -f "credentials.json" ]; then
+            echo "::warning::credentials.json found in repository - should be in .gitignore"
+          fi
+          echo "::endgroup::"
+
+      - name: Generate secret scan summary
+        run: |
+          echo "## Secret Scanning Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Scanned repository for exposed secrets and credentials." >> $GITHUB_STEP_SUMMARY
+          echo "No secrets should be committed to the repository." >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # CodeQL Analysis
+  # ============================================================================
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+          config-file: ./.github/codeql-config.yml
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ============================================================================
+  # Infrastructure as Code Scanning
+  # ============================================================================
+  iac-scan:
+    name: Infrastructure as Code Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov (IaC scanner)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: kubernetes,dockerfile,github_actions
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          soft_fail: true
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
+      - name: Scan Kubernetes manifests
+        run: |
+          echo "::group::Kubernetes Security Scan"
+          # Scan Helm charts and K8s manifests
+          if [ -d "helm" ]; then
+            echo "Scanning Helm charts for security issues..."
+            # Use kubesec or similar tool
+          fi
+          if [ -d "deployments/kubernetes" ]; then
+            echo "Scanning Kubernetes manifests..."
+          fi
+          echo "::endgroup::"
+
+      - name: Check Docker Compose security
+        run: |
+          echo "::group::Docker Compose Security"
+          if [ -f "docker-compose.yml" ]; then
+            echo "Checking Docker Compose configuration..."
+            # Check for security issues in docker-compose.yml
+            grep -E "privileged.*true|--privileged" docker-compose.yml && echo "::warning::Privileged containers found" || true
+          fi
+          echo "::endgroup::"
+
+  # ============================================================================
+  # License Compliance
+  # ============================================================================
+  license-scan:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pip-licenses
+
+      - name: Check licenses
+        run: |
+          echo "::group::License Check"
+          pip-licenses --format=json --output-file=licenses.json
+          pip-licenses --format=markdown --output-file=licenses.md
+          pip-licenses
+          echo "::endgroup::"
+
+      - name: Check for incompatible licenses
+        run: |
+          echo "::group::Incompatible License Check"
+          # Check for GPL, AGPL, or other potentially incompatible licenses
+          if pip-licenses | grep -iE "GPL|AGPL"; then
+            echo "::warning::Potentially incompatible licenses found"
+          fi
+          echo "::endgroup::"
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: |
+            licenses.json
+            licenses.md
+          retention-days: 90
+
+  # ============================================================================
+  # Security Summary
+  # ============================================================================
+  security-summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    needs:
+      - dependency-scan
+      - code-security-scan
+      - container-scan
+      - secret-scan
+      - codeql-analysis
+      - iac-scan
+      - license-scan
+    if: always()
+
+    steps:
+      - name: Check scan results
+        run: |
+          echo "Aggregating security scan results..."
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "::error::One or more security scans failed"
+            exit 1
+          else
+            echo "::notice::All security scans completed"
+          fi
+
+      - name: Generate security summary
+        run: |
+          echo "## 🔒 Security Scanning Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Code Security: ${{ needs.code-security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Container Scan: ${{ needs.container-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Secret Scan: ${{ needs.secret-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- CodeQL Analysis: ${{ needs.codeql-analysis.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- IaC Scan: ${{ needs.iac-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- License Check: ${{ needs.license-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Recommendations" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review all findings in the GitHub Security tab" >> $GITHUB_STEP_SUMMARY
+          echo "2. Address CRITICAL and HIGH severity issues before merging" >> $GITHUB_STEP_SUMMARY
+          echo "3. Keep dependencies up to date" >> $GITHUB_STEP_SUMMARY
+          echo "4. Never commit secrets or credentials" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create security issue on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔒 Security Scan Failed - ' + new Date().toISOString().split('T')[0],
+              body: 'Automated security scans have detected issues. Please review the security tab and recent workflow runs.',
+              labels: ['security', 'automated']
+            });

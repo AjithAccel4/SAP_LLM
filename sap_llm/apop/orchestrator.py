@@ -164,7 +164,10 @@ class AgenticOrchestrator:
 
     def _get_pmg_suggested_action(self, envelope: APOPEnvelope) -> Optional[str]:
         """
-        Query PMG for suggested next action.
+        Query PMG for suggested next action based on similar workflows.
+
+        Uses historical workflow data from PMG to intelligently suggest
+        the next action based on similar successful routing decisions.
 
         Args:
             envelope: Current envelope
@@ -172,8 +175,96 @@ class AgenticOrchestrator:
         Returns:
             Suggested action or None
         """
-        # TODO: Query PMG for similar workflows
-        # For now, return None
+        try:
+            # Extract document metadata from envelope
+            data = envelope.data or {}
+            doc_type = data.get("doc_type")
+            supplier_id = data.get("supplier_id")
+            company_code = data.get("company_code")
+
+            # Need at least doc_type to query PMG
+            if not doc_type:
+                logger.debug("No doc_type in envelope data, cannot query PMG")
+                return None
+
+            # Query PMG for similar successful routing decisions
+            logger.debug(
+                f"Querying PMG for similar workflows: doc_type={doc_type}, "
+                f"supplier={supplier_id}, company_code={company_code}"
+            )
+
+            similar_routings = self.pmg.get_similar_routing(
+                doc_type=doc_type,
+                supplier=supplier_id,
+                company_code=company_code,
+                limit=20,
+            )
+
+            if not similar_routings:
+                logger.debug("No similar routing decisions found in PMG")
+                return None
+
+            # Analyze historical patterns to suggest next action
+            # Map current event type to next action based on historical data
+            next_actions = []
+            for routing in similar_routings:
+                # Extract endpoint and convert to action format
+                endpoint = routing.get("endpoint", "")
+                if endpoint:
+                    # Convert endpoint to action hint (e.g., "/api/extract" -> "extract")
+                    action = self._endpoint_to_action(endpoint)
+                    if action:
+                        next_actions.append(action)
+
+            if next_actions:
+                # Find most common next action
+                from collections import Counter
+
+                action_counts = Counter(next_actions)
+                most_common_action, count = action_counts.most_common(1)[0]
+
+                logger.info(
+                    f"PMG suggests action '{most_common_action}' "
+                    f"(based on {count}/{len(similar_routings)} similar workflows)"
+                )
+
+                return most_common_action
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error querying PMG for suggested action: {e}")
+            # Fallback to None on error - orchestrator will use default flow
+            return None
+
+    def _endpoint_to_action(self, endpoint: str) -> Optional[str]:
+        """
+        Convert API endpoint to action hint.
+
+        Maps endpoints like '/api/v1/extract' to action hints like 'extract.fields'.
+
+        Args:
+            endpoint: API endpoint
+
+        Returns:
+            Action hint or None
+        """
+        # Simple mapping - can be enhanced based on actual endpoint structure
+        endpoint_map = {
+            "extract": "extract.fields",
+            "classify": "classify.detect",
+            "validate": "rules.validate",
+            "quality": "quality.check",
+            "route": "router.post",
+            "ocr": "preproc.ocr",
+        }
+
+        # Extract action from endpoint
+        endpoint_lower = endpoint.lower()
+        for key, action in endpoint_map.items():
+            if key in endpoint_lower:
+                return action
+
         return None
 
     async def _route_to_agent(
@@ -260,19 +351,114 @@ class AgenticOrchestrator:
         """
         Get status of workflow by correlation ID.
 
+        Queries PMG for complete workflow history including all steps,
+        routing decisions, responses, and exceptions.
+
         Args:
             correlation_id: Correlation ID
 
         Returns:
-            Workflow status
+            Workflow status dictionary with:
+            - correlation_id: The correlation ID
+            - status: Workflow status (active, completed, failed, unknown)
+            - steps_completed: Number of completed steps
+            - current_step: Current step endpoint or None
+            - steps: List of all workflow steps
+            - exceptions: List of exceptions raised
+            - success: Whether workflow completed successfully
         """
-        # TODO: Query PMG for workflow status
-        return {
-            "correlation_id": correlation_id,
-            "status": "unknown",
-            "steps_completed": 0,
-            "current_step": None,
-        }
+        # Default response if PMG not available
+        if not self.pmg:
+            logger.warning("PMG not available, cannot query workflow status")
+            return {
+                "correlation_id": correlation_id,
+                "status": "unknown",
+                "steps_completed": 0,
+                "current_step": None,
+                "steps": [],
+                "exceptions": [],
+                "success": None,
+            }
+
+        try:
+            # Query PMG for workflow data
+            logger.debug(f"Querying PMG for workflow status: {correlation_id}")
+
+            workflow = self.pmg.get_workflow_by_correlation_id(correlation_id)
+
+            if not workflow:
+                logger.warning(f"No workflow found for correlation_id: {correlation_id}")
+                return {
+                    "correlation_id": correlation_id,
+                    "status": "not_found",
+                    "steps_completed": 0,
+                    "current_step": None,
+                    "steps": [],
+                    "exceptions": [],
+                    "success": None,
+                }
+
+            # Get workflow steps
+            steps = self.pmg.get_workflow_steps(correlation_id)
+            steps_completed = len(steps)
+
+            # Determine current step (last step if workflow still active)
+            current_step = None
+            if steps:
+                current_step = steps[-1].get("endpoint")
+
+            # Get exceptions
+            exceptions = workflow.get("exceptions", [])
+            has_exceptions = len(exceptions) > 0
+
+            # Determine workflow status
+            responses = workflow.get("responses", [])
+
+            # Check if workflow completed successfully
+            success = None
+            if responses:
+                last_response = responses[-1]
+                success = last_response.get("success", False)
+
+            # Determine overall status
+            if success is True:
+                status = "completed"
+            elif success is False or has_exceptions:
+                status = "failed"
+            elif steps_completed > 0:
+                status = "active"
+            else:
+                status = "unknown"
+
+            logger.info(
+                f"Workflow {correlation_id}: status={status}, "
+                f"steps={steps_completed}, exceptions={len(exceptions)}"
+            )
+
+            return {
+                "correlation_id": correlation_id,
+                "status": status,
+                "steps_completed": steps_completed,
+                "current_step": current_step,
+                "steps": steps,
+                "exceptions": exceptions,
+                "success": success,
+                "document": workflow.get("document", {}),
+            }
+
+        except Exception as e:
+            logger.error(f"Error querying workflow status: {e}")
+            # Fallback to unknown status on error
+            return {
+                "correlation_id": correlation_id,
+                "status": "error",
+                "steps_completed": 0,
+                "current_step": None,
+                "steps": [],
+                "exceptions": [],
+                "success": None,
+                "error": str(e),
+            }
 
     def list_registered_agents(self) -> List[str]:
         """Get list of registered agent names."""
