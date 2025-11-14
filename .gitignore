@@ -1,0 +1,122 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+test-results.xml
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Model files (too large for git)
+models/
+*.pth
+*.bin
+*.pt
+*.onnx
+*.safetensors
+
+# Data
+data/
+*.csv
+*.parquet
+*.feather
+
+# Logs
+logs/
+*.log
+
+# Configuration (may contain secrets)
+.env
+.env.local
+secrets/
+*.key
+*.pem
+
+# Kubernetes secrets
+deployments/kubernetes/secrets.yaml
+
+# Cache
+.cache/
+*.cache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+*.whl
+*.tar.gz
+
+# Documentation builds
+docs/_build/
+site/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Monitoring data
+prometheus-data/
+grafana-data/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis
+dump.rdb
+
+# Vector indexes
+*.faiss
+*.index
+
+# Backup files
+*.bak
+*.backup

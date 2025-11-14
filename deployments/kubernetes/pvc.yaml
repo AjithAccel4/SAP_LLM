@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sap-llm-models-pvc
+  namespace: sap-llm
+  labels:
+    app: sap-llm-api
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: azure-disk-premium
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sap-llm-data-pvc
+  namespace: sap-llm
+  labels:
+    app: sap-llm-api
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azure-files-premium
+  resources:
+    requests:
+      storage: 500Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data-pvc
+  namespace: sap-llm
+  labels:
+    app: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: azure-disk-standard
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-data-pvc
+  namespace: sap-llm
+  labels:
+    app: mongo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: azure-disk-premium
+  resources:
+    requests:
+      storage: 100Gi
