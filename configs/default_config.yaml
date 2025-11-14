@@ -1,0 +1,391 @@
+# SAP_LLM Default Configuration
+# Environment: development
+
+system:
+  name: "SAP_LLM"
+  version: "1.0.0"
+  environment: "development"
+  debug: true
+  log_level: "INFO"
+
+# Model configurations
+models:
+  # Vision Encoder (LayoutLMv3)
+  vision_encoder:
+    name: "microsoft/layoutlmv3-base"
+    path: "/models/vision_encoder"
+    parameters: 300_000_000
+    device: "cuda"
+    precision: "fp16"
+    batch_size: 4
+    max_image_size: 1024
+
+  # Language Decoder (LLaMA-2-7B)
+  language_decoder:
+    name: "meta-llama/Llama-2-7b-hf"
+    path: "/models/language_decoder"
+    parameters: 7_000_000_000
+    device: "cuda"
+    precision: "int8"  # Quantized
+    batch_size: 2
+    max_length: 2048
+
+  # Reasoning Engine (Mixtral-8x7B)
+  reasoning_engine:
+    name: "mistralai/Mixtral-8x7B-v0.1"
+    path: "/models/reasoning_engine"
+    parameters: 47_000_000_000
+    active_experts: 2
+    device: "cuda"
+    precision: "int8"
+    batch_size: 1
+    max_length: 4096
+
+  # Unified SAP_LLM
+  unified_model:
+    path: "/models/sap_llm_unified"
+    total_parameters: 13_800_000_000
+    checkpoint_interval: 500
+    save_best_only: true
+
+# Training configuration
+training:
+  # Data
+  data_dir: "/data"
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  num_workers: 8
+
+  # Hyperparameters
+  learning_rate: 5.0e-5
+  warmup_steps: 1000
+  max_steps: 50000
+  gradient_accumulation_steps: 8
+  mixed_precision: "fp16"
+
+  # Optimization
+  optimizer: "adamw"
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+
+  # Distributed training
+  distributed: true
+  world_size: 4
+  backend: "nccl"
+
+  # Checkpointing
+  checkpoint_dir: "/models/checkpoints"
+  save_steps: 500
+  eval_steps: 100
+  logging_steps: 10
+
+# Pipeline stages configuration
+stages:
+  # Stage 1: Inbox
+  inbox:
+    enabled: true
+    model_size: "50M"
+    thumbnail_size: 256
+    max_tokens: 128
+    confidence_threshold: 0.95
+
+  # Stage 2: Preprocessing
+  preprocessing:
+    enabled: true
+    ocr_engine: "easyocr"  # Options: tesseract, easyocr, custom
+    target_dpi: 300
+    languages: ["en", "de", "fr", "es", "it"]
+    deskew: true
+    denoise: true
+    binarize: true
+
+  # Stage 3: Classification
+  classification:
+    enabled: true
+    num_classes: 15
+    confidence_threshold: 0.90
+    use_ensemble: false
+
+  # Stage 4: Type Identifier
+  type_identifier:
+    enabled: true
+    hierarchical: true
+    num_subtypes: 35
+    confidence_threshold: 0.85
+
+  # Stage 5: Extraction
+  extraction:
+    enabled: true
+    schema_validation: true
+    constrained_decoding: true
+    max_fields: 180
+    field_confidence_threshold: 0.80
+
+  # Stage 6: Quality Check
+  quality_check:
+    enabled: true
+    overall_threshold: 0.90
+    self_correction_enabled: true
+    max_correction_attempts: 3
+
+  # Stage 7: Validation
+  validation:
+    enabled: true
+    business_rules_enabled: true
+    pmg_lookup_enabled: true
+    tolerance_checking: true
+
+  # Stage 8: Routing
+  routing:
+    enabled: true
+    reasoning_enabled: true
+    pmg_context_enabled: true
+    confidence_threshold: 0.85
+
+# SAP Knowledge Base
+knowledge_base:
+  sap_api_count: 400
+  vector_store:
+    type: "faiss"
+    dimension: 384
+    index_type: "IndexFlatL2"
+    embedding_model: "all-MiniLM-L6-v2"
+
+  field_mappings_path: "/data/schemas/field_mappings"
+  business_rules_path: "/data/schemas/business_rules"
+  transformation_functions_path: "/data/schemas/transformations"
+
+# Process Memory Graph (PMG)
+pmg:
+  enabled: true
+  backend: "cosmos_gremlin"  # Options: cosmos_gremlin, neo4j
+
+  # Cosmos DB settings
+  cosmos:
+    endpoint: "${COSMOS_ENDPOINT}"
+    key: "${COSMOS_KEY}"
+    database: "qorsync"
+    container: "pmg"
+
+  # Neo4j settings (alternative)
+  neo4j:
+    uri: "bolt://localhost:7687"
+    username: "neo4j"
+    password: "${NEO4J_PASSWORD}"
+
+  # Graph configuration
+  max_similar_docs: 20
+  similarity_threshold: 0.85
+  embedding_dimension: 768
+
+  # Learning
+  continuous_learning:
+    enabled: true
+    batch_size: 100
+    retraining_interval: "daily"
+    drift_threshold: 0.25
+
+# APOP (Agentic Process Orchestration Protocol)
+apop:
+  enabled: true
+  spec_version: "1.0"
+
+  # CloudEvents compliance
+  source: "sap_llm"
+  content_type: "application/json"
+
+  # Signature
+  signing_enabled: true
+  algorithm: "ECDSA"
+  private_key_path: "/keys/apop_private_key.pem"
+
+  # Service Bus
+  service_bus:
+    connection_string: "${SERVICE_BUS_CONNECTION_STRING}"
+    namespace: "qorsync"
+
+  # Agents
+  agents:
+    - name: "inbox"
+      topic: "qorsync.inbox"
+      subscription: "inbox-sub"
+    - name: "preprocessor"
+      topic: "qorsync.preprocessor"
+      subscription: "preprocessor-sub"
+    - name: "classifier"
+      topic: "qorsync.classifier"
+      subscription: "classifier-sub"
+    - name: "extractor"
+      topic: "qorsync.extractor"
+      subscription: "extractor-sub"
+    - name: "quality_checker"
+      topic: "qorsync.quality_checker"
+      subscription: "quality_checker-sub"
+    - name: "validator"
+      topic: "qorsync.validator"
+      subscription: "validator-sub"
+    - name: "router"
+      topic: "qorsync.router"
+      subscription: "router-sub"
+
+# Self-Healing Workflow Loop (SHWL)
+shwl:
+  enabled: true
+
+  # Exception clustering
+  clustering:
+    algorithm: "hdbscan"
+    min_cluster_size: 15
+    metric: "cosine"
+    epsilon: 0.3
+
+  # Rule generation
+  rule_generation:
+    enabled: true
+    reasoning_model: "reasoning_engine"
+    confidence_threshold: 0.90
+
+  # Approval workflow
+  approval:
+    enabled: true
+    auto_approve_threshold: 0.95
+    human_review_required: true
+
+  # Scheduling
+  schedule:
+    frequency: "daily"
+    time: "02:00"
+    lookback_days: 7
+
+# Databases
+databases:
+  # Redis (caching)
+  redis:
+    host: "${REDIS_HOST:-localhost}"
+    port: 6379
+    db: 0
+    password: "${REDIS_PASSWORD}"
+    ttl: 3600
+    max_connections: 50
+
+  # MongoDB (document storage)
+  mongodb:
+    uri: "${MONGODB_URI:-mongodb://localhost:27017}"
+    database: "sap_llm"
+    collections:
+      documents: "documents"
+      results: "results"
+      exceptions: "exceptions"
+
+# API Server
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: false
+
+  # CORS
+  cors:
+    enabled: true
+    origins: ["*"]
+    methods: ["*"]
+    headers: ["*"]
+
+  # Rate limiting
+  rate_limit:
+    enabled: true
+    requests_per_minute: 100
+
+  # Authentication
+  auth:
+    enabled: false
+    type: "bearer"  # Options: bearer, api_key, oauth2
+
+# Performance
+performance:
+  # Caching
+  cache:
+    enabled: true
+    levels: ["l1_memory", "l2_redis", "l3_cosmos"]
+    l1_max_size: 1000
+    l2_ttl: 3600
+    l3_ttl: 86400
+
+  # Batching
+  batching:
+    enabled: true
+    max_batch_size: 8
+    batch_timeout_ms: 100
+
+  # Optimization
+  optimization:
+    quantization: "int8"
+    onnx_enabled: false
+    compile_model: false
+
+# Monitoring
+monitoring:
+  enabled: true
+
+  # Prometheus
+  prometheus:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+
+  # OpenTelemetry
+  opentelemetry:
+    enabled: false
+    endpoint: "${OTEL_ENDPOINT}"
+
+  # Logging
+  logging:
+    level: "INFO"
+    format: "json"
+    output: "stdout"
+    file_path: "/logs/sap_llm.log"
+
+# Testing
+testing:
+  test_data_path: "/data/test_set"
+  benchmark_path: "/data/benchmarks"
+
+  # Metrics thresholds
+  thresholds:
+    classification_accuracy: 0.95
+    extraction_f1: 0.92
+    latency_p95_ms: 1500
+    schema_compliance: 0.99
+    cost_per_document: 0.005
+
+# Document types
+document_types:
+  - PURCHASE_ORDER
+  - SUPPLIER_INVOICE
+  - SALES_ORDER
+  - CUSTOMER_INVOICE
+  - GOODS_RECEIPT
+  - ADVANCED_SHIPPING_NOTICE
+  - DELIVERY_NOTE
+  - CREDIT_NOTE
+  - DEBIT_NOTE
+  - PAYMENT_ADVICE
+  - REMITTANCE_ADVICE
+  - STATEMENT_OF_ACCOUNT
+  - QUOTE
+  - CONTRACT
+  - OTHER
+
+# Supported languages
+languages:
+  - en  # English
+  - de  # German
+  - fr  # French
+  - es  # Spanish
+  - it  # Italian
+  - pt  # Portuguese
+  - nl  # Dutch
+  - pl  # Polish
+  - cs  # Czech
+  - hu  # Hungarian
