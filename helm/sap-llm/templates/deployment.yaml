@@ -34,26 +34,159 @@ spec:
       runtimeClassName: {{ .Values.gpu.runtimeClass }}
       {{- end }}
       initContainers:
+        {{- if .Values.initContainers.modelDownloader.enabled }}
         - name: model-downloader
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: {{ if .Values.initContainers.modelDownloader.image }}{{ .Values.initContainers.modelDownloader.image }}{{ else }}"{{ .Values.image.repository }}:{{ .Values.image.tag }}"{{ end }}
+          imagePullPolicy: {{ .Values.initContainers.modelDownloader.pullPolicy | default .Values.image.pullPolicy }}
           command:
             - sh
             - -c
             - |
-              echo "Checking model availability..."
-              if [ ! -f /models/{{ .Values.config.model.name }}/config.json ]; then
-                echo "Model not found, downloading..."
-                # Model download logic here
-                echo "Model download complete"
-              else
-                echo "Model already available"
+              set -e
+              echo "=========================================="
+              echo "Model Download and Validation Init Container"
+              echo "=========================================="
+
+              MODEL_NAME="{{ .Values.config.model.name }}"
+              MODEL_PATH="/models/${MODEL_NAME}"
+              MODEL_CONFIG="${MODEL_PATH}/config.json"
+              MODEL_WEIGHTS="${MODEL_PATH}/pytorch_model.bin"
+              DOWNLOAD_SOURCE="${MODEL_DOWNLOAD_SOURCE:-s3://sap-llm-models/${MODEL_NAME}}"
+
+              echo "Checking model availability at: ${MODEL_PATH}"
+
+              # Function to validate model files
+              validate_model() {
+                echo "Validating model files..."
+                if [ ! -f "${MODEL_CONFIG}" ]; then
+                  echo "ERROR: Model config not found at ${MODEL_CONFIG}"
+                  return 1
+                fi
+
+                if [ ! -f "${MODEL_WEIGHTS}" ] && [ ! -d "${MODEL_PATH}/model_index.json" ]; then
+                  echo "ERROR: Model weights not found"
+                  return 1
+                fi
+
+                echo "Model files validated successfully"
+                return 0
+              }
+
+              # Check if model already exists and is valid
+              if validate_model 2>/dev/null; then
+                echo "Model already available and validated"
+                echo "Model path: ${MODEL_PATH}"
+                ls -lh "${MODEL_PATH}" | head -20
+                exit 0
               fi
+
+              echo "Model not found or invalid, initiating download..."
+              mkdir -p "${MODEL_PATH}"
+
+              # Download model based on source type
+              if [[ "${DOWNLOAD_SOURCE}" == s3://* ]]; then
+                echo "Downloading from S3: ${DOWNLOAD_SOURCE}"
+                if command -v aws >/dev/null 2>&1; then
+                  aws s3 sync "${DOWNLOAD_SOURCE}" "${MODEL_PATH}" --no-progress
+                else
+                  echo "ERROR: AWS CLI not available for S3 download"
+                  exit 1
+                fi
+              elif [[ "${DOWNLOAD_SOURCE}" == gs://* ]]; then
+                echo "Downloading from Google Cloud Storage: ${DOWNLOAD_SOURCE}"
+                if command -v gsutil >/dev/null 2>&1; then
+                  gsutil -m rsync -r "${DOWNLOAD_SOURCE}" "${MODEL_PATH}"
+                else
+                  echo "ERROR: gsutil not available for GCS download"
+                  exit 1
+                fi
+              elif [[ "${DOWNLOAD_SOURCE}" == http://* ]] || [[ "${DOWNLOAD_SOURCE}" == https://* ]]; then
+                echo "Downloading from HTTP(S): ${DOWNLOAD_SOURCE}"
+                wget -q --show-progress -P "${MODEL_PATH}" "${DOWNLOAD_SOURCE}"
+              elif [[ "${DOWNLOAD_SOURCE}" == hf://* ]]; then
+                echo "Downloading from Hugging Face Hub"
+                MODEL_ID="${DOWNLOAD_SOURCE#hf://}"
+                if command -v huggingface-cli >/dev/null 2>&1; then
+                  huggingface-cli download "${MODEL_ID}" --local-dir "${MODEL_PATH}"
+                else
+                  echo "ERROR: huggingface-cli not available"
+                  exit 1
+                fi
+              else
+                echo "ERROR: Unsupported download source: ${DOWNLOAD_SOURCE}"
+                exit 1
+              fi
+
+              # Validate downloaded model
+              if validate_model; then
+                echo "Model downloaded and validated successfully"
+                echo "Model size:"
+                du -sh "${MODEL_PATH}"
+              else
+                echo "ERROR: Model validation failed after download"
+                exit 1
+              fi
+
+              # Set proper permissions
+              chmod -R 755 "${MODEL_PATH}"
+              echo "Model preparation complete"
+          env:
+            - name: MODEL_DOWNLOAD_SOURCE
+              value: {{ .Values.config.model.downloadSource | default (printf "s3://sap-llm-models/%s" .Values.config.model.name) | quote }}
+            {{- if .Values.minio.enabled }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.auth.existingSecret }}
+                  key: access-key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.auth.existingSecret }}
+                  key: secret-key
+            - name: AWS_ENDPOINT_URL
+              value: "http://{{ include "sap-llm.fullname" . }}-minio:9000"
+            {{- end }}
           volumeMounts:
             - name: models
               mountPath: /models
+          resources:
+            {{- toYaml .Values.initContainers.modelDownloader.resources | nindent 12 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+        {{- end }}
+        {{- if .Values.initContainers.databaseMigration }}
+        {{- if .Values.initContainers.databaseMigration.enabled }}
+        - name: database-migration
+          image: {{ if .Values.initContainers.databaseMigration.image }}{{ .Values.initContainers.databaseMigration.image }}{{ else }}"{{ .Values.image.repository }}:{{ .Values.image.tag }}"{{ end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.initContainers.databaseMigration.command | nindent 12 }}
+          env:
+            {{- if .Values.postgresql.enabled }}
+            - name: POSTGRES_HOST
+              value: "{{ include "sap-llm.fullname" . }}-postgresql"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "sap_llm"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.auth.existingSecret }}
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.auth.existingSecret }}
+                  key: password
+            {{- end }}
+          resources:
+            {{- toYaml .Values.initContainers.databaseMigration.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+        {{- end }}
+        {{- end }}
       containers:
         - name: sap-llm
           securityContext:

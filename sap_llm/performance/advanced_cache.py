@@ -9,8 +9,9 @@ Implements intelligent caching strategies to achieve 10x latency reduction:
 """
 
 import asyncio
+import base64
 import hashlib
-import pickle
+import json
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timedelta
 from collections import OrderedDict
@@ -22,6 +23,53 @@ from sentence_transformers import SentenceTransformer
 from sap_llm.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+# SECURITY: Custom JSON encoder/decoder to replace pickle (prevents RCE attacks)
+class SecureJSONEncoder(json.JSONEncoder):
+    """JSON encoder that handles numpy arrays and datetime objects securely."""
+
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return {
+                "__numpy__": True,
+                "dtype": str(obj.dtype),
+                "shape": obj.shape,
+                "data": base64.b64encode(obj.tobytes()).decode('ascii')
+            }
+        elif isinstance(obj, (datetime, timedelta)):
+            return {
+                "__datetime__": True,
+                "isoformat": obj.isoformat()
+            }
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        return super().default(obj)
+
+
+def secure_json_decode(dct):
+    """JSON decoder that reconstructs numpy arrays and datetime objects."""
+    if "__numpy__" in dct:
+        data = base64.b64decode(dct["data"])
+        arr = np.frombuffer(data, dtype=dct["dtype"])
+        return arr.reshape(dct["shape"])
+    elif "__datetime__" in dct:
+        return datetime.fromisoformat(dct["isoformat"])
+    return dct
+
+
+def secure_dumps(obj: Any) -> bytes:
+    """Securely serialize object to bytes using JSON."""
+    json_str = json.dumps(obj, cls=SecureJSONEncoder, separators=(',', ':'))
+    return json_str.encode('utf-8')
+
+
+def secure_loads(data: bytes) -> Any:
+    """Securely deserialize object from bytes using JSON."""
+    json_str = data.decode('utf-8')
+    return json.loads(json_str, object_hook=secure_json_decode)
 
 
 class AdvancedCacheSystem:
@@ -160,19 +208,19 @@ class AdvancedCacheSystem:
         return self.metrics.get_summary()
 
     async def _get_from_redis(self, key: str) -> Optional[Any]:
-        """Get value from Redis"""
+        """Get value from Redis - SECURITY: Using JSON instead of pickle"""
         try:
             value_bytes = await self.redis_client.get(key)
             if value_bytes:
-                return pickle.loads(value_bytes)
+                return secure_loads(value_bytes)
         except Exception as e:
             logger.error(f"Redis get error: {e}")
         return None
 
     async def _put_to_redis(self, key: str, value: Any, ttl: int):
-        """Put value in Redis"""
+        """Put value in Redis - SECURITY: Using JSON instead of pickle"""
         try:
-            value_bytes = pickle.dumps(value)
+            value_bytes = secure_dumps(value)
             await self.redis_client.setex(key, ttl, value_bytes)
         except Exception as e:
             logger.error(f"Redis put error: {e}")
@@ -233,9 +281,9 @@ class LRUCache:
             logger.debug(f"Evicted LRU entry: {key}")
 
     def _estimate_size(self, value: Any) -> int:
-        """Estimate object size in bytes"""
+        """Estimate object size in bytes - SECURITY: Using JSON instead of pickle"""
         try:
-            return len(pickle.dumps(value))
+            return len(secure_dumps(value))
         except:
             return 1024  # Default 1KB
 
@@ -321,7 +369,7 @@ class SemanticCache:
             key: Original cache key
             ttl: Time to live in seconds
         """
-        # Store embedding and value
+        # Store embedding and value - SECURITY: Using JSON instead of pickle
         cache_entry = {
             'embedding': embedding.tolist(),
             'value': value,
@@ -330,19 +378,19 @@ class SemanticCache:
         }
 
         cache_key = f"semantic:{key}"
-        cache_bytes = pickle.dumps(cache_entry)
+        cache_bytes = secure_dumps(cache_entry)
 
         await self.redis.setex(cache_key, ttl, cache_bytes)
 
     async def _get_all_cached_items(self) -> List[Dict]:
-        """Get all cached items"""
+        """Get all cached items - SECURITY: Using JSON instead of pickle"""
         keys = await self.redis.keys("semantic:*")
 
         items = []
         for key in keys:
             value_bytes = await self.redis.get(key)
             if value_bytes:
-                item = pickle.loads(value_bytes)
+                item = secure_loads(value_bytes)
                 item['embedding'] = np.array(item['embedding'])
                 items.append(item)
 

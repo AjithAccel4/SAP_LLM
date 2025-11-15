@@ -1,6 +1,10 @@
 """
 Continuous Learning from Process Memory Graph
 
+ENHANCED VERSION:
+Integrates with comprehensive learning ecosystem including online learning,
+feedback loops, adaptive learning, knowledge augmentation, and self-improvement.
+
 Monitors PMG for new transactions and uses successful cases to improve models.
 Implements drift detection and automatic retraining triggers.
 """
@@ -343,3 +347,122 @@ class ContinuousLearner:
         logger.info(f"Total training samples collected: {len(training_data)}")
 
         return training_data
+
+    def integrate_with_learning_ecosystem(
+        self,
+        online_learner=None,
+        feedback_system=None,
+        adaptive_engine=None,
+        knowledge_augmentation=None,
+    ):
+        """
+        Integrate with comprehensive learning ecosystem.
+
+        This method connects the ContinuousLearner with:
+        - OnlineLearningEngine for real-time updates
+        - FeedbackLoopSystem for user feedback
+        - AdaptiveLearningEngine for performance monitoring
+        - KnowledgeAugmentationEngine for pattern extraction
+
+        Args:
+            online_learner: OnlineLearningEngine instance
+            feedback_system: FeedbackLoopSystem instance
+            adaptive_engine: AdaptiveLearningEngine instance
+            knowledge_augmentation: KnowledgeAugmentationEngine instance
+        """
+        self.online_learner = online_learner
+        self.feedback_system = feedback_system
+        self.adaptive_engine = adaptive_engine
+        self.knowledge_augmentation = knowledge_augmentation
+
+        logger.info(
+            "Integrated ContinuousLearner with learning ecosystem: "
+            f"online_learning={online_learner is not None}, "
+            f"feedback={feedback_system is not None}, "
+            f"adaptive={adaptive_engine is not None}, "
+            f"knowledge={knowledge_augmentation is not None}"
+        )
+
+    def continuous_improvement_cycle(
+        self,
+        doc_types: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run complete continuous improvement cycle.
+
+        Integrates all learning components for comprehensive improvement:
+        1. Learn from PMG feedback
+        2. Update online models
+        3. Check for drift
+        4. Augment knowledge base
+        5. Trigger retraining if needed
+
+        Args:
+            doc_types: Document types to process (None = all)
+
+        Returns:
+            Cycle statistics
+        """
+        logger.info("=" * 80)
+        logger.info("CONTINUOUS IMPROVEMENT CYCLE")
+        logger.info("=" * 80)
+
+        stats = {
+            "timestamp": datetime.now().isoformat(),
+            "learning_stats": {},
+            "drift_stats": {},
+            "knowledge_stats": {},
+            "retraining_triggered": [],
+        }
+
+        # Default doc types
+        if not doc_types:
+            doc_types = ["PURCHASE_ORDER", "SUPPLIER_INVOICE", "SALES_ORDER"]
+
+        for doc_type in doc_types:
+            logger.info(f"Processing {doc_type}...")
+
+            # 1. Learn from PMG
+            learning_result = self.learn_from_feedback(days=7)
+            stats["learning_stats"][doc_type] = learning_result
+
+            # 2. Update online models if integrated
+            if self.online_learner:
+                training_samples = self.collect_training_data(
+                    min_samples=100,
+                    max_samples=1000,
+                )
+
+                if training_samples:
+                    online_result = self.online_learner.batch_update(
+                        doc_type=doc_type,
+                        samples=[(s, s.get('doc_type', doc_type)) for s in training_samples[:100]],
+                    )
+                    stats["learning_stats"][doc_type]["online_update"] = online_result
+
+            # 3. Check drift if integrated
+            if self.adaptive_engine:
+                drift_result = self.adaptive_engine.check_drift(doc_type)
+                stats["drift_stats"][doc_type] = drift_result
+
+                # Check performance degradation
+                degraded, perf_metrics = self.adaptive_engine.check_performance_degradation(doc_type)
+                if degraded:
+                    stats["retraining_triggered"].append(doc_type)
+                    logger.warning(f"Performance degradation detected for {doc_type}")
+
+            # 4. Augment knowledge if integrated
+            if self.knowledge_augmentation:
+                kb_result = self.knowledge_augmentation.augment_from_successful_extractions(
+                    doc_type=doc_type,
+                    days=7,
+                )
+                stats["knowledge_stats"][doc_type] = kb_result
+
+        logger.info("=" * 80)
+        logger.info("CYCLE COMPLETE")
+        logger.info(f"Document types processed: {len(doc_types)}")
+        logger.info(f"Retraining triggered for: {stats['retraining_triggered']}")
+        logger.info("=" * 80)
+
+        return stats

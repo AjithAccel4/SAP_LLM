@@ -1,0 +1,461 @@
+# Staging Environment Values
+# Pre-production testing with production-like configuration
+
+global:
+  environment: staging
+  region: us-east-1
+  imageRegistry: ghcr.io
+  imagePullSecrets:
+    - name: ghcr-secret
+
+image:
+  repository: ghcr.io/ajithaccel4/sap_llm
+  tag: "staging-latest"
+  pullPolicy: Always
+
+# Moderate replicas for staging
+replicaCount: 2
+
+# Enable PDB for staging
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Moderate autoscaling for staging
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 80
+  metrics:
+    - type: Resource
+      resource:
+        name: nvidia.com/gpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+# Moderate resources for staging
+resources:
+  requests:
+    cpu: "2"
+    memory: "8Gi"
+    nvidia.com/gpu: "1"
+  limits:
+    cpu: "4"
+    memory: "16Gi"
+    nvidia.com/gpu: "1"
+
+# GPU configuration for staging
+gpu:
+  enabled: true
+  type: "nvidia-a100-40gb"
+  driver: "535.104.05"
+  runtimeClass: nvidia
+
+# Node selector for GPU nodes
+nodeSelector:
+  accelerator: nvidia-gpu
+  node-type: gpu-inference
+  environment: staging
+
+# Tolerations for GPU nodes
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+
+# Pod anti-affinity for staging
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - sap-llm
+          topologyKey: kubernetes.io/hostname
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+
+# Ingress enabled for staging
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/rate-limit: "500"
+  hosts:
+    - host: sap-llm-staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: sap-llm-staging-tls
+      hosts:
+        - sap-llm-staging.example.com
+
+# Application configuration - staging mode
+config:
+  model:
+    name: "qwen25vl-sap-llm-v1"
+    path: "/models/qwen25vl-sap-llm"
+    quantization: "int8"
+    tensorrt: true
+    batch_size: 2
+    max_length: 1024
+
+  triton:
+    enabled: true
+    instances: 2
+    max_batch_size: 4
+    preferred_batch_sizes: [2, 4]
+    max_queue_delay_microseconds: 100
+
+  pmg:
+    enabled: true
+    similarity_threshold: 0.85
+    max_similar_documents: 8
+    retraining_threshold: 300
+
+  rlhf:
+    enabled: true
+    reward_model_path: "/models/reward_model_v1"
+    ppo_iterations: 500
+    learning_rate: 1e-6
+    kl_penalty: 0.05
+
+  shwl:
+    enabled: true
+    anomaly_detection_interval: 300
+    contamination_rate: 0.05
+    recovery_strategies:
+      - retry_with_preprocessing
+      - route_to_manual_review
+
+  apop:
+    enabled: true
+    event_bus_type: kafka
+    agent_heartbeat_ttl: 30
+    dynamic_routing: true
+
+  security:
+    jwt_expiration: 3600
+    refresh_token_expiration: 604800
+    api_key_rotation_days: 90
+    encryption_algorithm: "AES-256-GCM"
+    tls_version: "1.3"
+
+  logging:
+    level: INFO
+    format: json
+    output: stdout
+
+  monitoring:
+    enabled: true
+    prometheus_port: 9090
+    jaeger_enabled: true
+    tracing_sample_rate: 0.5
+
+# Redis configuration
+redis:
+  enabled: true
+  architecture: replication
+  master:
+    persistence:
+      enabled: true
+      size: 20Gi
+  replica:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 20Gi
+  auth:
+    enabled: true
+    existingSecret: sap-llm-redis-secret
+
+# Neo4j configuration
+neo4j:
+  enabled: true
+  core:
+    numberOfServers: 2
+  readReplica:
+    numberOfServers: 1
+  volumes:
+    data:
+      mode: dynamic
+      dynamic:
+        storageClassName: fast-ssd
+        requests:
+          storage: 200Gi
+  dbms:
+    memory:
+      heap:
+        initial_size: "8G"
+        max_size: "16G"
+      pagecache:
+        size: "8G"
+  services:
+    neo4j:
+      enabled: true
+      spec:
+        type: ClusterIP
+  config:
+    dbms.security.auth_enabled: "true"
+    dbms.connector.bolt.thread_pool_max_size: "200"
+  existingPasswordSecret: sap-llm-neo4j-secret
+
+# Kafka configuration
+kafka:
+  enabled: true
+  replicaCount: 2
+  persistence:
+    enabled: true
+    size: 200Gi
+    storageClass: fast-ssd
+  zookeeper:
+    enabled: true
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 50Gi
+  auth:
+    clientProtocol: sasl
+    interBrokerProtocol: sasl
+    sasl:
+      mechanism: scram-sha-512
+
+# Qdrant configuration
+qdrant:
+  enabled: true
+  replicaCount: 2
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: fast-ssd
+  resources:
+    requests:
+      cpu: "1"
+      memory: "4Gi"
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+
+# MinIO configuration
+minio:
+  enabled: true
+  mode: distributed
+  replicas: 4
+  persistence:
+    enabled: true
+    size: 500Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: "0.5"
+      memory: "2Gi"
+  auth:
+    existingSecret: sap-llm-minio-secret
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  architecture: replication
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: fast-ssd
+  readReplicas:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 50Gi
+  auth:
+    existingSecret: sap-llm-postgres-secret
+  metrics:
+    enabled: true
+
+# Persistent volumes
+persistence:
+  models:
+    enabled: true
+    storageClass: fast-ssd
+    accessMode: ReadOnlyMany
+    size: 200Gi
+    mountPath: /models
+  data:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteMany
+    size: 500Gi
+    mountPath: /data
+  cache:
+    enabled: true
+    storageClass: fast-ssd
+    accessMode: ReadWriteMany
+    size: 100Gi
+    mountPath: /cache
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/sap-llm-staging-role
+  name: sap-llm-staging
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+
+# Network policies enabled
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+
+# Monitoring enabled
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 15s
+  rules:
+    enabled: true
+    alerts:
+      - name: HighErrorRate
+        expr: rate(sap_llm_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        severity: warning
+
+grafana:
+  enabled: true
+  dashboards:
+    enabled: true
+
+jaeger:
+  enabled: true
+  agent:
+    enabled: true
+  collector:
+    enabled: true
+  query:
+    enabled: true
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 3 * * *"  # Daily at 3 AM
+  retention: 14  # days
+  destinations:
+    - type: s3
+      bucket: sap-llm-staging-backups
+      region: us-east-1
+
+# Canary testing enabled
+canary:
+  enabled: true
+  weight: 20
+  analysis:
+    interval: 2m
+    threshold: 3
+    maxWeight: 50
+    stepWeight: 10
+    metrics:
+      - name: request-success-rate
+        threshold: 98
+      - name: request-duration
+        threshold: 2500
+
+# Feature flags
+features:
+  pmg_enabled: true
+  rlhf_enabled: true
+  shwl_enabled: true
+  apop_enabled: true
+  multilingual_enabled: false
+  federated_learning_enabled: false
+  online_learning_enabled: false
+
+# Init containers configuration
+initContainers:
+  modelDownloader:
+    enabled: true
+    image: ""  # Uses main image
+    pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"

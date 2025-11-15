@@ -180,6 +180,23 @@ class TestingConfig(BaseModel):
     thresholds: Dict[str, float]
 
 
+class WebSearchConfig(BaseModel):
+    """Web search configuration."""
+
+    enabled: bool = True
+    offline_mode: bool = False
+    cache_enabled: bool = True
+    providers: Dict[str, Any]
+    provider_priority: List[str]
+    rate_limits: Dict[str, int]
+    cache: Dict[str, Any]
+    trusted_domains: List[str]
+    blocked_domains: List[str]
+    min_relevance_score: float = Field(default=0.3, ge=0.0, le=1.0)
+    features: Dict[str, bool]
+    integrations: Dict[str, Any]
+
+
 class Config(BaseModel):
     """Main configuration object."""
 
@@ -198,6 +215,7 @@ class Config(BaseModel):
     testing: TestingConfig
     document_types: List[str]
     languages: List[str]
+    web_search: Optional[WebSearchConfig] = None
 
     @field_validator("system")
     def validate_splits(cls, v: SystemConfig, info) -> SystemConfig:

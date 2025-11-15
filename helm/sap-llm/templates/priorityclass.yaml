@@ -1,0 +1,14 @@
+{{- if .Values.priorityClass }}
+{{- if .Values.priorityClass.create }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.priorityClass.name | default "sap-llm-priority" }}
+  labels:
+    {{- include "sap-llm.labels" . | nindent 4 }}
+value: {{ .Values.priorityClass.value | default 1000 }}
+globalDefault: {{ .Values.priorityClass.globalDefault | default false }}
+description: {{ .Values.priorityClass.description | default "Priority class for SAP LLM workloads" | quote }}
+preemptionPolicy: {{ .Values.priorityClass.preemptionPolicy | default "PreemptLowerPriority" }}
+{{- end }}
+{{- end }}

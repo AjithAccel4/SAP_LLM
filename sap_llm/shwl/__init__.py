@@ -12,11 +12,15 @@ Features:
 """
 
 from sap_llm.shwl.clusterer import ExceptionClusterer
+from sap_llm.shwl.config_loader import ConfigurationLoader
+from sap_llm.shwl.deployment_manager import DeploymentManager
 from sap_llm.shwl.rule_generator import RuleGenerator
 from sap_llm.shwl.healing_loop import SelfHealingWorkflowLoop
 
 __all__ = [
     "ExceptionClusterer",
+    "ConfigurationLoader",
+    "DeploymentManager",
     "RuleGenerator",
     "SelfHealingWorkflowLoop",
 ]

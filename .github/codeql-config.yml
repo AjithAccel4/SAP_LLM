@@ -1,0 +1,49 @@
+name: "CodeQL Security Analysis Configuration"
+
+# Disable default queries and use only security-focused ones
+disable-default-queries: false
+
+# Query suites to run
+queries:
+  - uses: security-and-quality
+  - uses: security-extended
+
+# Paths to analyze
+paths:
+  - sap_llm/
+  - examples/
+
+# Paths to ignore
+paths-ignore:
+  - '**/__pycache__/**'
+  - '**/test_*.py'
+  - 'tests/**'
+  - 'docs/**'
+  - '**/*.md'
+  - '.github/**'
+  - 'scripts/**'
+
+# Query filters to customize severity
+query-filters:
+  - include:
+      kind:
+        - problem
+        - path-problem
+      precision:
+        - high
+        - very-high
+
+  - exclude:
+      id:
+        - py/unused-import
+        - py/unused-local-variable
+      tags:
+        - experimental
+
+# Additional packs to include
+packs:
+  - codeql/python-queries
+  - codeql/python-all
+
+# Configure external repository dependencies
+external-repository-token: ${{ secrets.GITHUB_TOKEN }}

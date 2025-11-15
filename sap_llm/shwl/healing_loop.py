@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional
 from sap_llm.models.reasoning_engine import ReasoningEngine
 from sap_llm.pmg.graph_client import ProcessMemoryGraph
 from sap_llm.shwl.clusterer import ExceptionClusterer
+from sap_llm.shwl.config_loader import ConfigurationLoader
+from sap_llm.shwl.deployment_manager import DeploymentManager
 from sap_llm.shwl.rule_generator import RuleGenerator
 from sap_llm.utils.logger import get_logger
 
@@ -65,6 +67,26 @@ class SelfHealingWorkflowLoop:
                 "confidence_threshold",
                 0.90,
             ) if config else 0.90,
+        )
+
+        # Configuration loader
+        config_dir = getattr(config, "config_dir", None) if config else None
+        self.config_loader = ConfigurationLoader(config_dir=config_dir)
+
+        # Deployment manager
+        deployment_config = self.config_loader.load_deployment_config()
+        self.deployment_manager = DeploymentManager(
+            deployment_config=deployment_config,
+            dry_run=getattr(
+                getattr(config, "deployment", None),
+                "dry_run",
+                False,
+            ) if config else False,
+            in_cluster=getattr(
+                getattr(config, "deployment", None),
+                "in_cluster",
+                False,
+            ) if config else False,
         )
 
         # Configuration
@@ -190,8 +212,9 @@ class SelfHealingWorkflowLoop:
         """Generate fix proposals for clusters."""
         proposals = []
 
-        # Get existing rules (TODO: load from configuration)
-        existing_rules = []
+        # Load existing rules from configuration
+        existing_rules = self.config_loader.load_healing_rules()
+        logger.info(f"Loaded {len(existing_rules)} existing healing rules")
 
         for cluster in clusters:
             try:
@@ -260,14 +283,14 @@ class SelfHealingWorkflowLoop:
 
     def _deploy_approved_fixes(self) -> int:
         """
-        Deploy approved fixes.
+        Deploy approved fixes with progressive canary rollout.
 
-        In production, this would:
+        Implementation includes:
         - Update business rule configuration
-        - Deploy to staging environment
-        - Run validation tests
-        - Progressive rollout to production
-        - Monitor for regressions
+        - Deploy to Kubernetes ConfigMaps
+        - Progressive rollout to production (5% -> 25% -> 50% -> 100%)
+        - Health checks and metrics monitoring
+        - Automatic rollback on failure
 
         Returns:
             Number of deployed fixes
@@ -277,22 +300,111 @@ class SelfHealingWorkflowLoop:
         for proposal in self.approved_proposals:
             if proposal.get("status") == "approved":
                 try:
-                    # TODO: Implement actual deployment
+                    rule_id = proposal.get("rule_id")
                     logger.info(
-                        f"[MOCK] Deploying fix for rule {proposal.get('rule_id')}"
+                        f"Deploying fix for rule {rule_id} "
+                        f"with progressive canary rollout"
                     )
 
-                    proposal["status"] = "deployed"
-                    proposal["deployed_at"] = datetime.now().isoformat()
+                    # Convert proposal to healing rule format
+                    healing_rule = self._proposal_to_rule(proposal)
 
-                    deployed_count += 1
+                    # Load existing rules
+                    existing_rules = self.config_loader.load_healing_rules()
+
+                    # Check if rule already exists
+                    rule_exists = any(
+                        r.get("rule_id") == rule_id for r in existing_rules
+                    )
+
+                    if rule_exists:
+                        # Update existing rule
+                        updated_rules = [
+                            healing_rule if r.get("rule_id") == rule_id else r
+                            for r in existing_rules
+                        ]
+                        logger.info(f"Updating existing rule {rule_id}")
+                    else:
+                        # Add new rule
+                        updated_rules = existing_rules + [healing_rule]
+                        logger.info(f"Adding new rule {rule_id}")
+
+                    # Save updated rules to configuration
+                    if self.config_loader.save_healing_rules(updated_rules):
+                        logger.info(f"Saved {len(updated_rules)} rules to configuration")
+                    else:
+                        raise RuntimeError("Failed to save healing rules to configuration")
+
+                    # Deploy with canary rollout
+                    deployment_result = self.deployment_manager.deploy_healing_rules(
+                        rules=updated_rules,
+                        proposal_id=proposal.get("cluster_id", rule_id),
+                    )
+
+                    if deployment_result["success"]:
+                        proposal["status"] = "deployed"
+                        proposal["deployed_at"] = datetime.now().isoformat()
+                        proposal["deployment_id"] = deployment_result.get("deployment_id")
+
+                        deployed_count += 1
+
+                        logger.info(
+                            f"Successfully deployed rule {rule_id} "
+                            f"(deployment_id: {deployment_result.get('deployment_id')})"
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"Deployment failed: {deployment_result.get('error')}"
+                        )
 
                 except Exception as e:
                     logger.error(f"Failed to deploy fix: {e}")
                     proposal["status"] = "deployment_failed"
                     proposal["error"] = str(e)
 
+        # Log deployment metrics
+        metrics = self.deployment_manager.get_metrics()
+        logger.info(
+            f"Deployment metrics: "
+            f"total={metrics['deployments_total']}, "
+            f"successful={metrics['deployments_successful']}, "
+            f"failed={metrics['deployments_failed']}, "
+            f"rollbacks={metrics['rollbacks_total']}"
+        )
+
         return deployed_count
+
+    def _proposal_to_rule(self, proposal: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert a fix proposal to a healing rule format.
+
+        Args:
+            proposal: Fix proposal
+
+        Returns:
+            Healing rule dictionary
+        """
+        return {
+            "rule_id": proposal.get("rule_id", f"RULE-{int(datetime.now().timestamp())}"),
+            "name": proposal.get("description", "Auto-generated healing rule"),
+            "description": proposal.get("description", ""),
+            "rule_type": proposal.get("fix_type", "validation"),
+            "category": proposal.get("category", "general"),
+            "condition": {
+                "exception_pattern": proposal.get("exception_pattern", ""),
+                "field": proposal.get("field", ""),
+            },
+            "action": proposal.get("fix_action", {}),
+            "metadata": {
+                "created_at": datetime.now().isoformat(),
+                "created_by": proposal.get("approval_method", "system"),
+                "version": "1.0",
+                "confidence": proposal.get("confidence", 0.0),
+                "risk_level": proposal.get("risk_level", "medium"),
+                "cluster_id": proposal.get("cluster_id"),
+                "cluster_size": proposal.get("cluster_size"),
+            },
+        }
 
     def approve_proposal(self, proposal_id: str) -> bool:
         """

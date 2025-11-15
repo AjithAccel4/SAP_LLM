@@ -5,7 +5,7 @@ Extracts text and bounding boxes from documents with image enhancement.
 Supports multiple OCR engines: Tesseract, EasyOCR, Custom TrOCR.
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -16,6 +16,13 @@ from sap_llm.stages.base_stage import BaseStage
 from sap_llm.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+try:
+    from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+    TROCR_AVAILABLE = True
+except ImportError:
+    TROCR_AVAILABLE = False
+    logger.warning("TrOCR not available. Install transformers to use TrOCR: pip install transformers torch")
 
 
 class PreprocessingStage(BaseStage):
@@ -43,6 +50,11 @@ class PreprocessingStage(BaseStage):
         self.ocr_engine = getattr(config, "ocr_engine", "easyocr") if config else "easyocr"
         self.target_dpi = getattr(config, "target_dpi", 300) if config else 300
         self.languages = getattr(config, "languages", ["en"]) if config else ["en"]
+        self.trocr_model_name = getattr(config, "trocr_model_name", "microsoft/trocr-base-handwritten") if config else "microsoft/trocr-base-handwritten"
+
+        # TrOCR model cache (lazy initialization)
+        self.trocr_processor: Optional[Any] = None
+        self.trocr_model: Optional[Any] = None
 
         # Initialize OCR engine
         self.ocr = self._init_ocr_engine()
@@ -57,10 +69,15 @@ class PreprocessingStage(BaseStage):
         elif self.ocr_engine == "easyocr":
             import easyocr
             return easyocr.Reader(self.languages, gpu=True)
-        else:
-            # Custom TrOCR
-            # TODO: Implement custom TrOCR
+        elif self.ocr_engine in ["custom", "trocr"]:
+            # Custom TrOCR - lazy initialization in _load_trocr_model()
+            if not TROCR_AVAILABLE:
+                logger.error("TrOCR selected but transformers library not available. Install with: pip install transformers torch")
+                raise ImportError("TrOCR requires transformers library. Install with: pip install transformers torch")
+            logger.info(f"TrOCR will be loaded on first use with model: {self.trocr_model_name}")
             return None
+        else:
+            raise ValueError(f"Unknown OCR engine: {self.ocr_engine}. Choose from: tesseract, easyocr, custom, trocr")
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -217,6 +234,68 @@ class PreprocessingStage(BaseStage):
 
         return cv2.bitwise_and(image, mask)
 
+    def _load_trocr_model(self):
+        """
+        Lazy load TrOCR model and processor.
+
+        Caches the model to avoid reloading on subsequent calls.
+        """
+        if self.trocr_processor is None or self.trocr_model is None:
+            logger.info(f"Loading TrOCR model: {self.trocr_model_name}")
+            try:
+                self.trocr_processor = TrOCRProcessor.from_pretrained(self.trocr_model_name)
+                self.trocr_model = VisionEncoderDecoderModel.from_pretrained(self.trocr_model_name)
+
+                # Move model to GPU if available
+                import torch
+                if torch.cuda.is_available():
+                    self.trocr_model = self.trocr_model.to("cuda")
+                    logger.info("TrOCR model loaded on GPU")
+                else:
+                    logger.info("TrOCR model loaded on CPU")
+            except Exception as e:
+                logger.error(f"Failed to load TrOCR model: {e}")
+                raise
+
+    def _ocr_with_trocr(self, image: Image.Image) -> Tuple[str, float]:
+        """
+        Perform OCR using TrOCR model.
+
+        Args:
+            image: PIL Image to process
+
+        Returns:
+            Tuple of (extracted_text, confidence_score)
+        """
+        try:
+            self._load_trocr_model()
+
+            # Convert to RGB if needed
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+
+            # Prepare image for TrOCR
+            pixel_values = self.trocr_processor(image, return_tensors="pt").pixel_values
+
+            # Move to same device as model
+            import torch
+            if torch.cuda.is_available():
+                pixel_values = pixel_values.to("cuda")
+
+            # Generate text
+            generated_ids = self.trocr_model.generate(pixel_values)
+            generated_text = self.trocr_processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+            # TrOCR doesn't provide confidence scores directly, so we use 1.0 as default
+            # In production, you might want to compute confidence based on output probabilities
+            confidence = 1.0
+
+            return generated_text, confidence
+
+        except Exception as e:
+            logger.error(f"TrOCR processing failed: {e}")
+            return "", 0.0
+
     def _run_ocr(self, image: Image.Image) -> Dict[str, Any]:
         """
         Run OCR on enhanced image.
@@ -326,11 +405,59 @@ class PreprocessingStage(BaseStage):
         }
 
     def _run_custom_ocr(self, image: Image.Image) -> Dict[str, Any]:
-        """Run custom TrOCR model."""
-        # TODO: Implement custom TrOCR
-        return {
-            "text": "",
-            "words": [],
-            "boxes": [],
-            "confidences": [],
-        }
+        """
+        Run custom TrOCR model.
+
+        Note: TrOCR processes the entire image as a whole, unlike other OCR engines
+        that provide word-level detection. This method uses TrOCR for text extraction
+        and falls back to simple text splitting for word-level outputs.
+
+        For word-level bounding boxes, consider using EasyOCR or Tesseract instead,
+        or combining TrOCR with a separate text detection model.
+        """
+        try:
+            # Use TrOCR for text extraction
+            text, confidence = self._ocr_with_trocr(image)
+
+            # TrOCR doesn't provide word-level bounding boxes
+            # Split text into words for compatibility with the expected format
+            words = text.split() if text else []
+
+            # Generate placeholder bounding boxes (evenly distributed across the image)
+            # In a production system, you might want to use a separate text detection model
+            boxes = []
+            confidences = []
+
+            if words:
+                img_w, img_h = image.size
+                # Simple heuristic: distribute words evenly across the image width
+                word_width = 1000 // len(words) if len(words) > 0 else 1000
+
+                for i, word in enumerate(words):
+                    # Create approximate bounding boxes
+                    x1 = i * word_width
+                    x2 = min((i + 1) * word_width, 1000)
+                    # Assume text is in the middle vertical region
+                    y1 = 400
+                    y2 = 600
+
+                    boxes.append([x1, y1, x2, y2])
+                    confidences.append(confidence)
+
+            logger.info(f"TrOCR extracted {len(words)} words with confidence {confidence:.2f}")
+
+            return {
+                "text": text,
+                "words": words,
+                "boxes": boxes,
+                "confidences": confidences,
+            }
+
+        except Exception as e:
+            logger.error(f"Custom TrOCR processing failed: {e}")
+            return {
+                "text": "",
+                "words": [],
+                "boxes": [],
+                "confidences": [],
+            }

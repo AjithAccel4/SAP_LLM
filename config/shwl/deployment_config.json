@@ -1,0 +1,89 @@
+{
+  "deployment": {
+    "strategy": "canary",
+    "namespace": "sap-llm",
+    "configmap_name": "sap-llm-healing-rules",
+    "canary_stages": [
+      {
+        "name": "initial",
+        "percentage": 5,
+        "duration_minutes": 15,
+        "health_check_interval_seconds": 30,
+        "success_criteria": {
+          "error_rate_threshold": 0.01,
+          "min_success_rate": 0.99,
+          "max_response_time_p95_ms": 500
+        }
+      },
+      {
+        "name": "expand",
+        "percentage": 25,
+        "duration_minutes": 30,
+        "health_check_interval_seconds": 60,
+        "success_criteria": {
+          "error_rate_threshold": 0.01,
+          "min_success_rate": 0.99,
+          "max_response_time_p95_ms": 500
+        }
+      },
+      {
+        "name": "majority",
+        "percentage": 50,
+        "duration_minutes": 60,
+        "health_check_interval_seconds": 60,
+        "success_criteria": {
+          "error_rate_threshold": 0.01,
+          "min_success_rate": 0.99,
+          "max_response_time_p95_ms": 500
+        }
+      },
+      {
+        "name": "complete",
+        "percentage": 100,
+        "duration_minutes": 0,
+        "health_check_interval_seconds": 0,
+        "success_criteria": null
+      }
+    ],
+    "rollback": {
+      "enabled": true,
+      "automatic": true,
+      "trigger_on_failure": true,
+      "max_rollback_attempts": 3,
+      "rollback_delay_seconds": 5
+    },
+    "health_checks": {
+      "enabled": true,
+      "endpoint": "/health",
+      "timeout_seconds": 10,
+      "healthy_threshold": 3,
+      "unhealthy_threshold": 2
+    },
+    "monitoring": {
+      "enabled": true,
+      "prometheus_enabled": true,
+      "metrics": [
+        "deployment_status",
+        "canary_stage",
+        "error_rate",
+        "success_rate",
+        "response_time_p50",
+        "response_time_p95",
+        "response_time_p99",
+        "rollback_count"
+      ],
+      "alerts": {
+        "enabled": true,
+        "channels": ["slack", "email"],
+        "severity_levels": ["critical", "warning", "info"]
+      }
+    }
+  },
+  "validation": {
+    "enabled": true,
+    "dry_run_first": true,
+    "schema_validation": true,
+    "conflict_detection": true,
+    "backup_before_deploy": true
+  }
+}

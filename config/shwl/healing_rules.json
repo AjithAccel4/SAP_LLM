@@ -1,0 +1,145 @@
+{
+  "rules": [
+    {
+      "rule_id": "RULE-001",
+      "name": "Invoice date format validation",
+      "description": "Validates invoice date format and handles common parsing errors",
+      "rule_type": "validation",
+      "category": "invoice_processing",
+      "condition": {
+        "exception_pattern": "ValueError: time data .* does not match format",
+        "field": "invoice_date"
+      },
+      "action": {
+        "type": "transform",
+        "transformation": "normalize_date_format",
+        "fallback_formats": [
+          "%Y-%m-%d",
+          "%d/%m/%Y",
+          "%m/%d/%Y",
+          "%d.%m.%Y"
+        ]
+      },
+      "metadata": {
+        "created_at": "2024-01-15T10:00:00Z",
+        "created_by": "system",
+        "version": "1.0",
+        "confidence": 0.95,
+        "risk_level": "low"
+      }
+    },
+    {
+      "rule_id": "RULE-002",
+      "name": "Missing vendor ID handling",
+      "description": "Handles missing vendor IDs by attempting lookup via vendor name",
+      "rule_type": "enrichment",
+      "category": "vendor_management",
+      "condition": {
+        "exception_pattern": "KeyError: 'vendor_id'",
+        "field": "vendor_id"
+      },
+      "action": {
+        "type": "lookup",
+        "lookup_source": "vendor_registry",
+        "lookup_key": "vendor_name",
+        "fallback": "create_pending_vendor"
+      },
+      "metadata": {
+        "created_at": "2024-01-20T14:30:00Z",
+        "created_by": "system",
+        "version": "1.0",
+        "confidence": 0.92,
+        "risk_level": "medium"
+      }
+    },
+    {
+      "rule_id": "RULE-003",
+      "name": "Currency conversion handling",
+      "description": "Handles missing currency exchange rates with fallback mechanisms",
+      "rule_type": "validation",
+      "category": "financial_processing",
+      "condition": {
+        "exception_pattern": "CurrencyConversionError",
+        "field": "amount"
+      },
+      "action": {
+        "type": "fallback",
+        "primary_source": "ecb_api",
+        "fallback_source": "cached_rates",
+        "max_age_hours": 24
+      },
+      "metadata": {
+        "created_at": "2024-02-01T09:15:00Z",
+        "created_by": "admin",
+        "version": "1.1",
+        "confidence": 0.88,
+        "risk_level": "medium"
+      }
+    },
+    {
+      "rule_id": "RULE-004",
+      "name": "PDF extraction timeout recovery",
+      "description": "Recovers from PDF extraction timeouts using alternative OCR engine",
+      "rule_type": "recovery",
+      "category": "document_processing",
+      "condition": {
+        "exception_pattern": "TimeoutError.*pdf_extract",
+        "stage": "preprocessing"
+      },
+      "action": {
+        "type": "retry",
+        "retry_with_alternative": true,
+        "alternative_engine": "tesseract",
+        "max_retries": 2,
+        "timeout_increase_factor": 1.5
+      },
+      "metadata": {
+        "created_at": "2024-02-10T11:45:00Z",
+        "created_by": "system",
+        "version": "1.0",
+        "confidence": 0.90,
+        "risk_level": "low"
+      }
+    },
+    {
+      "rule_id": "RULE-005",
+      "name": "SAP field mapping correction",
+      "description": "Corrects common SAP field mapping mismatches",
+      "rule_type": "transformation",
+      "category": "sap_integration",
+      "condition": {
+        "exception_pattern": "FieldMappingError",
+        "integration": "sap_s4hana"
+      },
+      "action": {
+        "type": "remap",
+        "field_mappings": {
+          "BUKRS": "company_code",
+          "LIFNR": "vendor_number",
+          "BEDAT": "po_date",
+          "NETWR": "net_value"
+        },
+        "strict_mode": false
+      },
+      "metadata": {
+        "created_at": "2024-02-15T16:20:00Z",
+        "created_by": "sap_admin",
+        "version": "2.0",
+        "confidence": 0.96,
+        "risk_level": "low"
+      }
+    }
+  ],
+  "configuration": {
+    "enabled": true,
+    "auto_apply": false,
+    "require_human_approval": true,
+    "max_rules": 100,
+    "rule_priority_order": [
+      "recovery",
+      "validation",
+      "transformation",
+      "enrichment"
+    ]
+  }
+}

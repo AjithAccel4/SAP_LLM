@@ -103,7 +103,7 @@ stages:
   # Stage 3: Classification
   classification:
     enabled: true
-    num_classes: 15
+    num_classes: 62
     confidence_threshold: 0.90
     use_ensemble: false
 
@@ -111,7 +111,7 @@ stages:
   type_identifier:
     enabled: true
     hierarchical: true
-    num_subtypes: 35
+    num_subtypes: 198
     confidence_threshold: 0.85
 
   # Stage 5: Extraction
@@ -280,16 +280,18 @@ databases:
 
 # API Server
 api:
-  host: "0.0.0.0"
-  port: 8000
-  workers: 4
+  host: "${API_HOST:-0.0.0.0}"
+  port: ${API_PORT:-8000}
+  workers: ${API_WORKERS:-4}
   reload: false
 
   # CORS
   cors:
     enabled: true
-    origins: ["*"]
-    methods: ["*"]
+    origins:
+      - "${API_CORS_ORIGINS:-http://localhost:3000}"
+    credentials: ${API_CORS_CREDENTIALS:-true}
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     headers: ["*"]
 
   # Rate limiting
@@ -299,8 +301,9 @@ api:
 
   # Authentication
   auth:
-    enabled: false
+    enabled: true
     type: "bearer"  # Options: bearer, api_key, oauth2
+    secret_key: "${API_SECRET_KEY}"
 
 # Performance
 performance:
@@ -359,22 +362,68 @@ testing:
     schema_compliance: 0.99
     cost_per_document: 0.005
 
-# Document types
+# Document types - Comprehensive SAP business documents
 document_types:
+  # Procurement & Supply Chain
+  - PURCHASE_REQUISITION
   - PURCHASE_ORDER
-  - SUPPLIER_INVOICE
-  - SALES_ORDER
-  - CUSTOMER_INVOICE
+  - PURCHASE_ORDER_CONFIRMATION
+  - PURCHASE_ORDER_CHANGE
   - GOODS_RECEIPT
+  - GOODS_ISSUE
+  - INBOUND_DELIVERY
+  - OUTBOUND_DELIVERY
   - ADVANCED_SHIPPING_NOTICE
+  - DESPATCH_ADVICE
+  - SHIPMENT_NOTIFICATION
+  - DELIVERY_SCHEDULE
+  - MATERIAL_MASTER
+  - VENDOR_MASTER
+
+  # Sales & Distribution
+  - SALES_INQUIRY
+  - SALES_QUOTATION
+  - SALES_ORDER
+  - SALES_ORDER_CONFIRMATION
   - DELIVERY_NOTE
+  - PACKING_LIST
+  - BILLING_DOCUMENT
+  - CUSTOMER_INVOICE
+  - PRO_FORMA_INVOICE
   - CREDIT_NOTE
   - DEBIT_NOTE
+  - CREDIT_MEMO_REQUEST
+  - DEBIT_MEMO_REQUEST
+  - RETURNS
+  - COMPLAINT
+
+  # Finance & Accounting
+  - SUPPLIER_INVOICE
   - PAYMENT_ADVICE
   - REMITTANCE_ADVICE
   - STATEMENT_OF_ACCOUNT
-  - QUOTE
+  - BANK_STATEMENT
+  - FINANCIAL_DOCUMENT
+  - ACCOUNTING_DOCUMENT
+  - PAYMENT_ORDER
+  - DUNNING_NOTICE
+
+  # Contracts & Agreements
   - CONTRACT
+  - QUOTE
+  - SCHEDULING_AGREEMENT
+  - OUTLINE_AGREEMENT
+  - SERVICE_ENTRY_SHEET
+
+  # Other Business Documents
+  - INVENTORY_DOCUMENT
+  - STOCK_TRANSFER_ORDER
+  - PHYSICAL_INVENTORY
+  - QUALITY_NOTIFICATION
+  - SERVICE_ORDER
+  - PRODUCTION_ORDER
+  - TIME_SHEET
+  - EXPENSE_REPORT
   - OTHER
 
 # Supported languages
@@ -389,3 +438,119 @@ languages:
   - pl  # Polish
   - cs  # Czech
   - hu  # Hungarian
+
+# Web Search Configuration
+web_search:
+  enabled: true
+  offline_mode: false  # Set true to disable all internet connectivity
+  cache_enabled: true
+
+  # Search Providers
+  providers:
+    # Google Custom Search API
+    google:
+      enabled: false
+      api_key: "${GOOGLE_SEARCH_API_KEY}"
+      cx: "${GOOGLE_SEARCH_CX}"  # Custom Search Engine ID
+
+    # Bing Search API
+    bing:
+      enabled: false
+      api_key: "${BING_SEARCH_API_KEY}"
+
+    # Tavily AI Search (AI-optimized)
+    tavily:
+      enabled: false
+      api_key: "${TAVILY_API_KEY}"
+
+    # DuckDuckGo (no API key - fallback)
+    duckduckgo:
+      enabled: true  # Always available as fallback
+
+  # Provider Priority (order to try)
+  provider_priority:
+    - tavily     # Try Tavily first (AI-optimized)
+    - google     # Then Google
+    - bing       # Then Bing
+    - duckduckgo # Finally DuckDuckGo (free fallback)
+
+  # Rate Limits (requests per minute / per day)
+  rate_limits:
+    google: 100
+    google_daily: 10000
+    bing: 100
+    bing_daily: 10000
+    tavily: 60
+    tavily_daily: 1000
+    duckduckgo: 30
+    duckduckgo_daily: 1000
+
+  # Caching Configuration
+  cache:
+    host: "${REDIS_HOST:-localhost}"
+    port: 6379
+    db: 1  # Separate DB from main cache
+    password: "${REDIS_PASSWORD}"
+    ttl: 86400  # Cache results for 24 hours
+    compress_threshold: 1024  # Compress results > 1KB
+
+  # Trusted Domains (boosted in ranking)
+  trusted_domains:
+    - sap.com
+    - help.sap.com
+    - api.sap.com
+    - developers.sap.com
+    - community.sap.com
+    - support.sap.com
+    - wikipedia.org
+    - github.com
+    - stackoverflow.com
+    - microsoft.com
+
+  # Blocked Domains (filtered out)
+  blocked_domains:
+    - example.com
+    - spam.com
+    - ads.com
+
+  # Result Processing
+  min_relevance_score: 0.3  # Minimum score to include result
+
+  # Feature Flags
+  features:
+    vendor_verification: true
+    address_validation: true
+    tax_id_validation: true
+    price_validation: true
+    exchange_rates: true
+    sap_doc_search: true
+    knowledge_base_updates: true
+
+  # Integration with Pipeline Stages
+  integrations:
+    # Validation stage
+    validation:
+      enabled: true
+      verify_vendors: true
+      verify_addresses: true
+      verify_tax_ids: true
+      verify_bank_details: true
+
+    # Routing stage
+    routing:
+      enabled: true
+      api_discovery: true
+      endpoint_lookup: true
+
+    # Quality check stage
+    quality_check:
+      enabled: true
+      fact_verification: true
+      cross_reference: true
+      price_validation: true
+
+    # Knowledge base
+    knowledge_base:
+      enabled: true
+      auto_update: false  # Set true for automatic updates
+      update_schedule: "weekly"

@@ -11,6 +11,7 @@ Crawls SAP API documentation and extracts:
 import asyncio
 import json
 import re
+import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin, urlparse
 
@@ -216,8 +217,270 @@ class SAPAPICrawler:
             url: Source URL
             content: XML content
         """
-        # TODO: Implement XML parsing for EDMX/WSDL
         logger.debug(f"Processing XML from {url}")
+
+        try:
+            root = ET.fromstring(content)
+
+            # Determine XML type based on root element and namespaces
+            if "edmx" in root.tag.lower() or "metadata" in url.lower():
+                # EDMX (Entity Data Model XML) - OData metadata
+                await self._parse_edmx(url, root)
+
+            elif "wsdl" in root.tag.lower() or "definitions" in root.tag.lower():
+                # WSDL (Web Services Description Language)
+                await self._parse_wsdl(url, root)
+
+            else:
+                # Generic XML schema
+                logger.debug(f"Processing generic XML schema from {url}")
+                await self._parse_generic_xml(url, root)
+
+        except ET.ParseError as e:
+            logger.error(f"Failed to parse XML from {url}: {e}")
+        except Exception as e:
+            logger.error(f"Error processing XML from {url}: {e}")
+
+    async def _parse_edmx(self, url: str, root: ET.Element) -> None:
+        """
+        Parse EDMX (OData metadata) XML.
+
+        Args:
+            url: Source URL
+            root: XML root element
+        """
+        try:
+            # EDMX namespaces
+            namespaces = {
+                "edmx": "http://docs.oasis-open.org/odata/ns/edmx",
+                "edm": "http://docs.oasis-open.org/odata/ns/edm",
+                "": "http://schemas.microsoft.com/ado/2009/11/edm",
+            }
+
+            # Extract service info
+            api_info = {
+                "source": url,
+                "type": "odata",
+                "title": "OData Service",
+                "description": f"OData metadata from {url}",
+                "entities": [],
+                "endpoints": [],
+            }
+
+            # Find all EntityType definitions
+            for entity in root.findall(".//edm:EntityType", namespaces):
+                entity_name = entity.get("Name", "Unknown")
+
+                # Extract properties/fields
+                fields = []
+                for prop in entity.findall(".//edm:Property", namespaces):
+                    field_info = {
+                        "name": prop.get("Name", ""),
+                        "type": prop.get("Type", ""),
+                        "nullable": prop.get("Nullable", "true"),
+                        "max_length": prop.get("MaxLength"),
+                    }
+                    fields.append(field_info)
+
+                    # Store field mapping
+                    await self._store_field_from_edmx(url, entity_name, field_info)
+
+                # Extract navigation properties (relationships)
+                nav_props = []
+                for nav in entity.findall(".//edm:NavigationProperty", namespaces):
+                    nav_info = {
+                        "name": nav.get("Name", ""),
+                        "type": nav.get("Type", ""),
+                        "partner": nav.get("Partner"),
+                    }
+                    nav_props.append(nav_info)
+
+                entity_info = {
+                    "name": entity_name,
+                    "fields": fields,
+                    "navigation": nav_props,
+                }
+
+                api_info["entities"].append(entity_info)
+
+                # Create endpoint for entity
+                endpoint = {
+                    "path": f"/{entity_name}",
+                    "method": "GET",
+                    "summary": f"Query {entity_name}",
+                    "description": f"OData endpoint for {entity_name} entity",
+                }
+                api_info["endpoints"].append(endpoint)
+
+            # Generate embedding
+            entities_text = " ".join([e["name"] for e in api_info["entities"]])
+            api_text = f"{api_info['title']} {entities_text}"
+            api_info["embedding"] = self.embedding_model.encode(api_text).tolist()
+
+            self.api_schemas.append(api_info)
+            logger.info(f"Extracted EDMX schema with {len(api_info['entities'])} entities")
+
+        except Exception as e:
+            logger.error(f"Error parsing EDMX: {e}")
+
+    async def _parse_wsdl(self, url: str, root: ET.Element) -> None:
+        """
+        Parse WSDL (SOAP service) XML.
+
+        Args:
+            url: Source URL
+            root: XML root element
+        """
+        try:
+            # WSDL namespaces
+            namespaces = {
+                "wsdl": "http://schemas.xmlsoap.org/wsdl/",
+                "soap": "http://schemas.xmlsoap.org/wsdl/soap/",
+                "xsd": "http://www.w3.org/2001/XMLSchema",
+            }
+
+            # Extract service info
+            service_elem = root.find(".//wsdl:service", namespaces)
+            service_name = service_elem.get("name") if service_elem is not None else "SOAP Service"
+
+            api_info = {
+                "source": url,
+                "type": "soap",
+                "title": service_name,
+                "description": f"SOAP service from {url}",
+                "operations": [],
+                "endpoints": [],
+            }
+
+            # Find all operations
+            for operation in root.findall(".//wsdl:operation", namespaces):
+                op_name = operation.get("name", "Unknown")
+
+                # Extract input/output messages
+                input_elem = operation.find(".//wsdl:input", namespaces)
+                output_elem = operation.find(".//wsdl:output", namespaces)
+
+                operation_info = {
+                    "name": op_name,
+                    "input": input_elem.get("message") if input_elem is not None else None,
+                    "output": output_elem.get("message") if output_elem is not None else None,
+                }
+
+                api_info["operations"].append(operation_info)
+
+                # Create endpoint
+                endpoint = {
+                    "path": f"/{op_name}",
+                    "method": "POST",
+                    "summary": f"SOAP operation: {op_name}",
+                    "description": f"SOAP operation {op_name}",
+                }
+                api_info["endpoints"].append(endpoint)
+
+            # Generate embedding
+            ops_text = " ".join([op["name"] for op in api_info["operations"]])
+            api_text = f"{api_info['title']} {ops_text}"
+            api_info["embedding"] = self.embedding_model.encode(api_text).tolist()
+
+            self.api_schemas.append(api_info)
+            logger.info(f"Extracted WSDL schema with {len(api_info['operations'])} operations")
+
+        except Exception as e:
+            logger.error(f"Error parsing WSDL: {e}")
+
+    async def _parse_generic_xml(self, url: str, root: ET.Element) -> None:
+        """
+        Parse generic XML schema.
+
+        Args:
+            url: Source URL
+            root: XML root element
+        """
+        try:
+            # Extract fields from XML structure
+            fields = self._extract_xml_fields(root)
+
+            api_info = {
+                "source": url,
+                "type": "xml",
+                "title": root.tag,
+                "description": f"XML schema from {url}",
+                "fields": fields,
+            }
+
+            # Generate embedding
+            fields_text = " ".join([f["name"] for f in fields])
+            api_info["embedding"] = self.embedding_model.encode(fields_text).tolist()
+
+            self.api_schemas.append(api_info)
+            logger.info(f"Extracted generic XML schema with {len(fields)} fields")
+
+        except Exception as e:
+            logger.error(f"Error parsing generic XML: {e}")
+
+    def _extract_xml_fields(self, element: ET.Element, prefix: str = "") -> List[Dict[str, Any]]:
+        """
+        Recursively extract fields from XML element.
+
+        Args:
+            element: XML element
+            prefix: Field name prefix
+
+        Returns:
+            List of field definitions
+        """
+        fields = []
+
+        for child in element:
+            # Get tag name without namespace
+            tag_name = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+            field_name = f"{prefix}.{tag_name}" if prefix else tag_name
+
+            field_info = {
+                "name": field_name,
+                "type": "string",
+                "value": child.text.strip() if child.text else None,
+            }
+
+            # Add attributes
+            if child.attrib:
+                field_info["attributes"] = child.attrib
+
+            fields.append(field_info)
+
+            # Recursively process children
+            if len(child) > 0:
+                fields.extend(self._extract_xml_fields(child, field_name))
+
+        return fields
+
+    async def _store_field_from_edmx(
+        self, url: str, entity_name: str, field_info: Dict[str, Any]
+    ) -> None:
+        """
+        Store field mapping extracted from EDMX.
+
+        Args:
+            url: Source URL
+            entity_name: Entity name
+            field_info: Field information
+        """
+        mapping = {
+            "source": url,
+            "entity": entity_name,
+            "field_name": field_info["name"],
+            "sap_field": field_info["name"],
+            "type": field_info["type"],
+            "description": f"{entity_name}.{field_info['name']}",
+            "nullable": field_info.get("nullable", "true") == "true",
+            "max_length": field_info.get("max_length"),
+        }
+
+        # Generate embedding
+        mapping_text = f"{entity_name} {field_info['name']} {field_info['type']}"
+        mapping["embedding"] = self.embedding_model.encode(mapping_text).tolist()
+
+        self.field_mappings.append(mapping)
 
     def _is_api_link(self, href: str) -> bool:
         """
@@ -300,8 +563,198 @@ class SAPAPICrawler:
             url: Source URL
             metadata: OData metadata
         """
-        # TODO: Implement OData metadata parsing
         logger.debug(f"Extracting OData schema from {url}")
+
+        try:
+            api_info = {
+                "source": url,
+                "type": "odata",
+                "title": "OData Service",
+                "description": f"OData service from {url}",
+                "entities": [],
+                "endpoints": [],
+            }
+
+            # Check for different OData metadata formats
+            # OData v4 JSON format
+            if "@odata.context" in metadata or "value" in metadata:
+                # Parse OData v4 JSON metadata
+                await self._parse_odata_v4_json(url, metadata, api_info)
+
+            # OData v2/v3 JSON format
+            elif "d" in metadata and "EntitySets" in metadata.get("d", {}):
+                # Parse OData v2/v3 JSON metadata
+                await self._parse_odata_v2_json(url, metadata, api_info)
+
+            # Check for entity collections in response
+            elif "d" in metadata and "results" in metadata.get("d", {}):
+                # This is a data response, extract entity structure
+                results = metadata["d"]["results"]
+                if results:
+                    await self._extract_entity_from_data(url, results[0], api_info)
+
+            # Generic OData response
+            else:
+                # Try to infer structure from response
+                await self._extract_generic_odata_structure(url, metadata, api_info)
+
+            # Only add if we found entities
+            if api_info["entities"] or api_info["endpoints"]:
+                # Generate embedding
+                entities_text = " ".join([e.get("name", "") for e in api_info["entities"]])
+                api_text = f"{api_info['title']} {entities_text}"
+                api_info["embedding"] = self.embedding_model.encode(api_text).tolist()
+
+                self.api_schemas.append(api_info)
+                logger.info(f"Extracted OData schema with {len(api_info['entities'])} entities")
+
+        except Exception as e:
+            logger.error(f"Error extracting OData schema: {e}")
+
+    async def _parse_odata_v4_json(
+        self, url: str, metadata: Dict[str, Any], api_info: Dict[str, Any]
+    ) -> None:
+        """
+        Parse OData v4 JSON metadata.
+
+        Args:
+            url: Source URL
+            metadata: Metadata dictionary
+            api_info: API info to populate
+        """
+        # Extract context
+        context = metadata.get("@odata.context", "")
+        api_info["title"] = f"OData v4 Service: {context.split('/')[-1]}"
+
+        # Parse entity sets from value array
+        if "value" in metadata:
+            for entity_set in metadata["value"]:
+                entity_name = entity_set.get("name", "")
+                entity_kind = entity_set.get("kind", "")
+
+                if entity_kind == "EntitySet":
+                    entity_info = {
+                        "name": entity_name,
+                        "kind": entity_kind,
+                        "url": entity_set.get("url", entity_name),
+                    }
+
+                    api_info["entities"].append(entity_info)
+
+                    # Create CRUD endpoints
+                    for method, action in [
+                        ("GET", "Query"),
+                        ("POST", "Create"),
+                        ("PUT", "Update"),
+                        ("DELETE", "Delete"),
+                    ]:
+                        endpoint = {
+                            "path": f"/{entity_name}",
+                            "method": method,
+                            "summary": f"{action} {entity_name}",
+                            "description": f"OData {action} operation for {entity_name}",
+                        }
+                        api_info["endpoints"].append(endpoint)
+
+    async def _parse_odata_v2_json(
+        self, url: str, metadata: Dict[str, Any], api_info: Dict[str, Any]
+    ) -> None:
+        """
+        Parse OData v2/v3 JSON metadata.
+
+        Args:
+            url: Source URL
+            metadata: Metadata dictionary
+            api_info: API info to populate
+        """
+        api_info["title"] = "OData v2/v3 Service"
+
+        # Extract entity sets
+        d_obj = metadata.get("d", {})
+        entity_sets = d_obj.get("EntitySets", [])
+
+        for entity_name in entity_sets:
+            entity_info = {
+                "name": entity_name,
+                "kind": "EntitySet",
+            }
+
+            api_info["entities"].append(entity_info)
+
+            # Create endpoints
+            endpoint = {
+                "path": f"/{entity_name}",
+                "method": "GET",
+                "summary": f"Query {entity_name}",
+                "description": f"OData query for {entity_name}",
+            }
+            api_info["endpoints"].append(endpoint)
+
+    async def _extract_entity_from_data(
+        self, url: str, sample_data: Dict[str, Any], api_info: Dict[str, Any]
+    ) -> None:
+        """
+        Extract entity structure from OData data response.
+
+        Args:
+            url: Source URL
+            sample_data: Sample data record
+            api_info: API info to populate
+        """
+        # Infer entity name from metadata
+        metadata = sample_data.get("__metadata", {})
+        entity_type = metadata.get("type", "Entity")
+
+        # Extract fields from sample data
+        fields = []
+        for key, value in sample_data.items():
+            if not key.startswith("__"):
+                field_info = {
+                    "name": key,
+                    "type": type(value).__name__,
+                    "sample_value": str(value)[:50] if value else None,
+                }
+                fields.append(field_info)
+
+                # Store field mapping
+                mapping = {
+                    "source": url,
+                    "entity": entity_type,
+                    "field_name": key,
+                    "sap_field": key,
+                    "type": field_info["type"],
+                    "description": f"{entity_type}.{key}",
+                }
+
+                mapping_text = f"{entity_type} {key}"
+                mapping["embedding"] = self.embedding_model.encode(mapping_text).tolist()
+                self.field_mappings.append(mapping)
+
+        entity_info = {
+            "name": entity_type,
+            "fields": fields,
+        }
+
+        api_info["entities"].append(entity_info)
+
+    async def _extract_generic_odata_structure(
+        self, url: str, metadata: Dict[str, Any], api_info: Dict[str, Any]
+    ) -> None:
+        """
+        Extract generic OData structure from response.
+
+        Args:
+            url: Source URL
+            metadata: Metadata dictionary
+            api_info: API info to populate
+        """
+        # Try to find entity collections
+        for key, value in metadata.items():
+            if isinstance(value, dict) and "results" in value:
+                # Found entity collection
+                results = value["results"]
+                if results and isinstance(results, list):
+                    await self._extract_entity_from_data(url, results[0], api_info)
 
     async def _extract_generic_schema(self, url: str, data: Dict[str, Any]) -> None:
         """
@@ -366,8 +819,277 @@ class SAPAPICrawler:
             endpoint: API endpoint
             schema: Field schema
         """
-        # TODO: Implement detailed field extraction
         logger.debug(f"Extracting fields from {endpoint}")
+
+        try:
+            # Navigate to the actual schema content
+            content = schema.get("content", {})
+
+            for content_type, content_schema in content.items():
+                schema_def = content_schema.get("schema", {})
+
+                # Extract fields from schema definition
+                await self._extract_fields_recursive(
+                    url, endpoint, schema_def, content_type
+                )
+
+        except Exception as e:
+            logger.error(f"Error extracting fields from schema: {e}")
+
+    async def _extract_fields_recursive(
+        self,
+        url: str,
+        endpoint: str,
+        schema: Dict[str, Any],
+        content_type: str,
+        prefix: str = "",
+        parent_required: Optional[List[str]] = None,
+    ) -> None:
+        """
+        Recursively extract fields from nested schema.
+
+        Args:
+            url: Source URL
+            endpoint: API endpoint
+            schema: Schema definition
+            content_type: Content type (e.g., application/json)
+            prefix: Field name prefix for nested fields
+            parent_required: Required fields from parent level
+        """
+        try:
+            # Handle schema references ($ref)
+            if "$ref" in schema:
+                # Reference to another schema - we'll skip for now
+                # In production, you'd resolve these references
+                logger.debug(f"Skipping $ref schema: {schema['$ref']}")
+                return
+
+            # Get schema type
+            schema_type = schema.get("type", "object")
+
+            # Extract properties for object type
+            if schema_type == "object":
+                properties = schema.get("properties", {})
+                required_fields = schema.get("required", parent_required or [])
+
+                for prop_name, prop_def in properties.items():
+                    field_name = f"{prefix}.{prop_name}" if prefix else prop_name
+
+                    # Extract field details
+                    field_mapping = await self._create_field_mapping(
+                        url=url,
+                        endpoint=endpoint,
+                        field_name=field_name,
+                        field_def=prop_def,
+                        content_type=content_type,
+                        required=prop_name in required_fields,
+                    )
+
+                    if field_mapping:
+                        self.field_mappings.append(field_mapping)
+
+                    # Recursively process nested objects
+                    if prop_def.get("type") == "object":
+                        await self._extract_fields_recursive(
+                            url, endpoint, prop_def, content_type, field_name, required_fields
+                        )
+
+                    # Process array items
+                    elif prop_def.get("type") == "array":
+                        items = prop_def.get("items", {})
+                        if items.get("type") == "object":
+                            await self._extract_fields_recursive(
+                                url, endpoint, items, content_type, f"{field_name}[]", required_fields
+                            )
+
+            # Handle allOf, anyOf, oneOf schemas
+            for combine_key in ["allOf", "anyOf", "oneOf"]:
+                if combine_key in schema:
+                    for sub_schema in schema[combine_key]:
+                        await self._extract_fields_recursive(
+                            url, endpoint, sub_schema, content_type, prefix, parent_required
+                        )
+
+        except Exception as e:
+            logger.error(f"Error in recursive field extraction: {e}")
+
+    async def _create_field_mapping(
+        self,
+        url: str,
+        endpoint: str,
+        field_name: str,
+        field_def: Dict[str, Any],
+        content_type: str,
+        required: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Create detailed field mapping from OpenAPI field definition.
+
+        Args:
+            url: Source URL
+            endpoint: API endpoint
+            field_name: Field name
+            field_def: Field definition from OpenAPI schema
+            content_type: Content type
+            required: Whether field is required
+
+        Returns:
+            Field mapping dictionary or None
+        """
+        try:
+            # Extract field properties
+            field_type = field_def.get("type", "string")
+            description = field_def.get("description", "")
+            format_type = field_def.get("format")
+            default_value = field_def.get("default")
+            example = field_def.get("example")
+
+            # Constraints
+            min_length = field_def.get("minLength")
+            max_length = field_def.get("maxLength")
+            minimum = field_def.get("minimum")
+            maximum = field_def.get("maximum")
+            pattern = field_def.get("pattern")
+            enum = field_def.get("enum")
+
+            # Create comprehensive field mapping
+            mapping = {
+                "source": url,
+                "endpoint": endpoint,
+                "field_name": field_name,
+                "sap_field": field_name,  # Default to same name
+                "type": field_type,
+                "format": format_type,
+                "description": description,
+                "required": required,
+                "content_type": content_type,
+            }
+
+            # Add optional properties
+            if default_value is not None:
+                mapping["default"] = default_value
+
+            if example is not None:
+                mapping["example"] = example
+
+            if min_length is not None:
+                mapping["min_length"] = min_length
+
+            if max_length is not None:
+                mapping["max_length"] = max_length
+
+            if minimum is not None:
+                mapping["minimum"] = minimum
+
+            if maximum is not None:
+                mapping["maximum"] = maximum
+
+            if pattern:
+                mapping["pattern"] = pattern
+
+            if enum:
+                mapping["enum"] = enum
+
+            # Extract business rules from field definition
+            await self._extract_rules_from_field(url, field_name, field_def, mapping)
+
+            # Generate embedding for semantic search
+            embedding_text = f"{field_name} {description} {field_type}"
+            if format_type:
+                embedding_text += f" {format_type}"
+
+            mapping["embedding"] = self.embedding_model.encode(embedding_text).tolist()
+
+            return mapping
+
+        except Exception as e:
+            logger.error(f"Error creating field mapping for {field_name}: {e}")
+            return None
+
+    async def _extract_rules_from_field(
+        self,
+        url: str,
+        field_name: str,
+        field_def: Dict[str, Any],
+        mapping: Dict[str, Any],
+    ) -> None:
+        """
+        Extract business rules from field definition.
+
+        Args:
+            url: Source URL
+            field_name: Field name
+            field_def: Field definition
+            mapping: Field mapping (for context)
+        """
+        try:
+            # Create validation rules from constraints
+            if "pattern" in field_def:
+                rule = {
+                    "source": url,
+                    "rule_id": f"PATTERN_{field_name}",
+                    "description": f"Field '{field_name}' must match pattern: {field_def['pattern']}",
+                    "type": "validation",
+                    "pattern": field_def["pattern"],
+                    "field": field_name,
+                }
+
+                rule_text = f"{field_name} pattern validation {field_def['pattern']}"
+                rule["embedding"] = self.embedding_model.encode(rule_text).tolist()
+                self.business_rules.append(rule)
+
+            # Required field rule
+            if mapping.get("required"):
+                rule = {
+                    "source": url,
+                    "rule_id": f"REQUIRED_{field_name}",
+                    "description": f"Field '{field_name}' is required",
+                    "type": "required",
+                    "field": field_name,
+                }
+
+                rule_text = f"{field_name} required validation"
+                rule["embedding"] = self.embedding_model.encode(rule_text).tolist()
+                self.business_rules.append(rule)
+
+            # Range validation
+            if "minimum" in field_def or "maximum" in field_def:
+                min_val = field_def.get("minimum", "")
+                max_val = field_def.get("maximum", "")
+
+                rule = {
+                    "source": url,
+                    "rule_id": f"RANGE_{field_name}",
+                    "description": f"Field '{field_name}' must be between {min_val} and {max_val}",
+                    "type": "range",
+                    "field": field_name,
+                    "minimum": min_val,
+                    "maximum": max_val,
+                }
+
+                rule_text = f"{field_name} range validation {min_val} {max_val}"
+                rule["embedding"] = self.embedding_model.encode(rule_text).tolist()
+                self.business_rules.append(rule)
+
+            # Enum validation
+            if "enum" in field_def:
+                enum_values = field_def["enum"]
+
+                rule = {
+                    "source": url,
+                    "rule_id": f"ENUM_{field_name}",
+                    "description": f"Field '{field_name}' must be one of: {', '.join(map(str, enum_values))}",
+                    "type": "validation",
+                    "field": field_name,
+                    "enum": enum_values,
+                }
+
+                rule_text = f"{field_name} enum validation {' '.join(map(str, enum_values))}"
+                rule["embedding"] = self.embedding_model.encode(rule_text).tolist()
+                self.business_rules.append(rule)
+
+        except Exception as e:
+            logger.error(f"Error extracting rules from field {field_name}: {e}")
 
     async def _extract_field_mappings_from_html(
         self, url: str, soup: BeautifulSoup
