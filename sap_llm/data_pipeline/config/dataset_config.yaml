@@ -1,0 +1,333 @@
+# SAP_LLM Training Dataset Configuration
+# Version: 1.0.0
+
+# Corpus Building Configuration
+corpus:
+  version: "1.0.0"
+  output_dir: "./data/sap_llm_corpus_v1"
+
+  # Target document counts
+  targets:
+    total_documents: 1000000
+    real_sap_documents: 300000
+    synthetic_documents: 500000
+    public_datasets: 200000
+    annotated_documents: 50000
+
+  # Quality thresholds
+  quality:
+    min_quality_score: 0.8
+    target_cohen_kappa: 0.92
+    min_annotation_quality: 0.85
+
+  # Token requirements
+  tokens:
+    min_total_tokens: 100000000000  # 100B tokens
+    avg_tokens_per_document: 500
+
+  # Data split ratios
+  splits:
+    train: 0.70
+    validation: 0.15
+    test: 0.15
+    stratify_by: "document_type"
+    random_seed: 42
+
+# Data Sources Configuration
+sources:
+  postgresql:
+    enabled: true
+    host: "${POSTGRES_HOST:localhost}"
+    port: 5432
+    database: "sap_llm_db"
+    table: "processed_documents"
+    query: "SELECT * FROM processed_documents WHERE processing_status = 'completed'"
+    target_count: 300000
+
+  neo4j:
+    enabled: true
+    uri: "${NEO4J_URI:bolt://localhost:7687}"
+    database: "neo4j"
+    target_patterns: 244
+
+  sap_accelerator_hub:
+    enabled: true
+    base_url: "https://api.sap.com"
+    api_categories:
+      - "s4hana"
+      - "ariba"
+      - "concur"
+      - "fieldglass"
+    target_schemas: 400
+
+  public_datasets:
+    enabled: true
+    datasets:
+      - name: "rvl-cdip"
+        url: "https://www.cs.cmu.edu/~aharley/rvl-cdip/"
+        target_count: 100000
+        categories: 16
+
+      - name: "funsd"
+        url: "https://guillaumejaume.github.io/FUNSD/"
+        target_count: 50000
+        type: "form_understanding"
+
+      - name: "cord"
+        url: "https://github.com/clovaai/cord"
+        target_count: 30000
+        type: "receipts"
+
+      - name: "sroie"
+        url: "https://rrc.cvc.uab.es/?ch=13"
+        target_count: 20000
+        type: "receipts"
+
+# Document Types Configuration
+document_types:
+  - name: "invoice"
+    target_count: 150000
+    priority: "high"
+    fields:
+      - "invoice_number"
+      - "invoice_date"
+      - "due_date"
+      - "total_amount"
+      - "subtotal"
+      - "tax_amount"
+      - "vendor_name"
+      - "vendor_address"
+      - "customer_name"
+      - "line_items"
+    subtypes: 16
+
+  - name: "purchase_order"
+    target_count: 150000
+    priority: "high"
+    fields:
+      - "po_number"
+      - "po_date"
+      - "delivery_date"
+      - "total_value"
+      - "vendor_code"
+      - "buyer_name"
+      - "items"
+    subtypes: 36
+
+  - name: "delivery_note"
+    target_count: 120000
+    priority: "medium"
+    fields:
+      - "delivery_number"
+      - "delivery_date"
+      - "carrier"
+      - "tracking_number"
+      - "items"
+
+  - name: "material_document"
+    target_count: 100000
+    priority: "medium"
+    fields:
+      - "material_doc_number"
+      - "posting_date"
+      - "movement_type"
+      - "plant"
+      - "materials"
+
+  - name: "sales_order"
+    target_count: 120000
+    priority: "high"
+    fields:
+      - "sales_order_number"
+      - "order_date"
+      - "customer_code"
+      - "total_value"
+      - "items"
+
+  - name: "goods_receipt"
+    target_count: 100000
+    priority: "medium"
+    fields:
+      - "gr_number"
+      - "receipt_date"
+      - "po_reference"
+      - "items"
+
+  - name: "packing_list"
+    target_count: 80000
+    priority: "low"
+    fields:
+      - "packing_list_number"
+      - "shipment_date"
+      - "packages"
+      - "items"
+
+  - name: "shipping_notice"
+    target_count: 80000
+    priority: "low"
+    fields:
+      - "shipment_number"
+      - "ship_date"
+      - "carrier"
+      - "tracking"
+
+# Synthetic Document Generation
+synthetic:
+  enabled: true
+  template_dir: "./templates"
+
+  # Generation parameters
+  parameters:
+    languages: ["en", "de", "es", "fr"]
+    quality_variation: true
+    output_formats: ["pdf"]
+
+  # Faker configuration
+  faker:
+    locales:
+      en: "en_US"
+      de: "de_DE"
+      es: "es_ES"
+      fr: "fr_FR"
+
+  # Document variations
+  variations:
+    - type: "scanned"
+      probability: 0.3
+      noise_level: 0.2
+
+    - type: "digital"
+      probability: 0.5
+      noise_level: 0.0
+
+    - type: "photo"
+      probability: 0.2
+      noise_level: 0.3
+
+# Annotation Pipeline
+annotation:
+  enabled: true
+  annotations_dir: "./data/annotations"
+
+  # Annotation methods
+  methods:
+    auto_annotation:
+      enabled: true
+      ocr_engine: "tesseract"
+      ner_model: "en_core_web_sm"
+
+    human_annotation:
+      enabled: false
+      tool: "label_studio"
+      url: "http://localhost:8080"
+
+  # Quality control
+  quality_control:
+    multi_annotator: false
+    annotators_per_document: 1
+    verification_required: true
+    min_agreement_score: 0.85
+
+  # Annotation targets
+  targets:
+    total_annotated: 50000
+    fields_per_document: 10
+    unique_business_fields: 200
+
+# Preprocessing Configuration
+preprocessing:
+  use_spark: true
+  spark:
+    app_name: "SAP_LLM_Preprocessing"
+    master: "local[*]"
+    executor_memory: "4g"
+    driver_memory: "2g"
+    shuffle_partitions: 200
+
+  # Image processing
+  image:
+    target_size: [224, 224]
+    normalize: true
+    augmentation:
+      enabled: true
+      rotation_range: 5
+      brightness_range: [0.8, 1.2]
+      contrast_range: [0.8, 1.2]
+
+  # Quality filters
+  filters:
+    min_quality_score: 0.8
+    max_pages_per_document: 50
+    min_file_size_bytes: 1024
+    remove_duplicates: true
+
+  # OCR configuration
+  ocr:
+    engine: "tesseract"
+    languages: ["eng", "deu", "spa", "fra"]
+    dpi: 300
+
+# Validation Configuration
+validation:
+  strict_mode: true
+
+  # Required checks
+  checks:
+    - name: "document_count"
+      min_value: 1000000
+
+    - name: "quality_score"
+      min_avg: 0.8
+
+    - name: "token_count"
+      min_value: 100000000000
+
+    - name: "annotation_count"
+      min_value: 50000
+
+    - name: "field_coverage"
+      min_unique_fields: 200
+
+    - name: "split_distribution"
+      train_range: [65, 75]
+      val_range: [10, 20]
+      test_range: [10, 20]
+
+# Export Configuration
+export:
+  formats:
+    - name: "huggingface"
+      enabled: true
+      output_dir: "./data/huggingface"
+      dataset_name: "sap_llm_training_corpus"
+
+    - name: "parquet"
+      enabled: true
+      compression: "snappy"
+
+    - name: "json"
+      enabled: true
+      pretty_print: false
+
+# Processing Resources
+resources:
+  max_workers: 16
+  batch_size: 100
+  cache_size: 1000
+  memory_limit_gb: 32
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/corpus_building.log"
+
+# Monitoring
+monitoring:
+  enabled: true
+  metrics:
+    - "documents_processed"
+    - "processing_rate"
+    - "quality_scores"
+    - "error_rate"
+  export_interval_seconds: 60
