@@ -689,11 +689,52 @@ class KnowledgeBaseQuery:
 
             # Evaluate expression safely (only allow basic arithmetic)
             try:
-                # Remove any potentially dangerous characters
-                safe_expression = re.sub(r"[^0-9a-zA-Z_+\-*/().\s]", "", expression)
+                # SECURITY: Never use eval() - it's vulnerable to code injection
+                # Use ast module for safe evaluation
+                import ast
+                import operator
 
-                # Evaluate
-                calculated_value = eval(safe_expression, {"__builtins__": {}}, eval_context)
+                # Define allowed operations
+                allowed_operators = {
+                    ast.Add: operator.add,
+                    ast.Sub: operator.sub,
+                    ast.Mult: operator.mul,
+                    ast.Div: operator.truediv,
+                    ast.Mod: operator.mod,
+                    ast.Pow: operator.pow,
+                    ast.USub: operator.neg,
+                    ast.UAdd: operator.pos,
+                }
+
+                def safe_eval(node, context):
+                    """Safely evaluate arithmetic expression using AST."""
+                    if isinstance(node, ast.BinOp):
+                        op_func = allowed_operators.get(type(node.op))
+                        if not op_func:
+                            raise ValueError(f"Operator {type(node.op).__name__} not allowed")
+                        left = safe_eval(node.left, context)
+                        right = safe_eval(node.right, context)
+                        return op_func(left, right)
+                    elif isinstance(node, ast.UnaryOp):
+                        op_func = allowed_operators.get(type(node.op))
+                        if not op_func:
+                            raise ValueError(f"Operator {type(node.op).__name__} not allowed")
+                        operand = safe_eval(node.operand, context)
+                        return op_func(operand)
+                    elif isinstance(node, ast.Num):  # Python < 3.8
+                        return node.n
+                    elif isinstance(node, ast.Constant):  # Python >= 3.8
+                        return node.value
+                    elif isinstance(node, ast.Name):
+                        if node.id in context:
+                            return context[node.id]
+                        raise ValueError(f"Variable '{node.id}' not found in context")
+                    else:
+                        raise ValueError(f"Expression type {type(node).__name__} not allowed")
+
+                # Parse and evaluate expression
+                parsed_expr = ast.parse(expression, mode='eval')
+                calculated_value = safe_eval(parsed_expr.body, eval_context)
                 expected_value = float(payload[target_field])
 
                 # Compare with tolerance for floating point

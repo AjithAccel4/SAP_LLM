@@ -52,26 +52,28 @@ jobs:
       - name: Run Safety check (dependency vulnerabilities)
         run: |
           echo "::group::Safety Check"
-          safety check --json --output safety-report.json || true
-          safety check --full-report || true
+          # SECURITY: Fail build on vulnerabilities (remove || true and continue-on-error)
+          safety check --json --output safety-report.json
+          safety check --full-report
           echo "::endgroup::"
-        continue-on-error: true
+        # SECURITY: Make this blocking - remove continue-on-error: true
 
       - name: Run pip-audit (PyPI vulnerability scan)
         run: |
           echo "::group::pip-audit Scan"
-          pip-audit --desc --format json --output pip-audit-report.json || true
-          pip-audit --desc || true
+          # SECURITY: Fail build on vulnerabilities
+          pip-audit --desc --format json --output pip-audit-report.json
+          pip-audit --desc
           echo "::endgroup::"
-        continue-on-error: true
+        # SECURITY: Make this blocking - remove continue-on-error: true
 
       - name: Check for known vulnerable packages
         run: |
           echo "::group::Vulnerable Package Check"
           # Check requirements.txt for known vulnerable packages
-          pip install -r requirements.txt --dry-run --report vulnerability-report.json 2>&1 || true
+          pip install -r requirements.txt --dry-run --report vulnerability-report.json 2>&1
           echo "::endgroup::"
-        continue-on-error: true
+        # SECURITY: Make this blocking - remove continue-on-error: true
 
       - name: Analyze dependency tree
         run: |
@@ -129,10 +131,11 @@ jobs:
       - name: Run Bandit (Python security linter)
         run: |
           echo "::group::Bandit Security Scan"
-          bandit -r sap_llm/ -f json -o bandit-report.json || true
+          # SECURITY: Fail build on medium+ severity issues
+          bandit -r sap_llm/ -f json -o bandit-report.json -ll
           bandit -r sap_llm/ -ll -f screen
           echo "::endgroup::"
-        continue-on-error: true
+        # SECURITY: Make this blocking - bandit will fail on findings
 
       - name: Convert Bandit to SARIF
         run: |
@@ -151,10 +154,11 @@ jobs:
       - name: Run Semgrep (static analysis)
         run: |
           echo "::group::Semgrep Analysis"
-          semgrep --config=auto --json --output=semgrep-report.json sap_llm/ || true
-          semgrep --config=auto sap_llm/ || true
+          # SECURITY: Fail build on security findings
+          semgrep --config=auto --json --output=semgrep-report.json --error sap_llm/
+          semgrep --config=auto --error sap_llm/
           echo "::endgroup::"
-        continue-on-error: true
+        # SECURITY: Make this blocking - semgrep will fail on findings
 
       - name: Check for hardcoded secrets
         run: |
@@ -223,7 +227,8 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH,MEDIUM'
           vuln-type: 'os,library'
-          exit-code: '0'
+          # SECURITY: Fail build on CRITICAL/HIGH vulnerabilities
+          exit-code: '1'
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -239,7 +244,8 @@ jobs:
           format: 'json'
           output: 'trivy-config.json'
           scan-type: 'config'
-          exit-code: '0'
+          # SECURITY: Fail build on misconfigurations
+          exit-code: '1'
 
       - name: Run Grype vulnerability scanner
         uses: anchore/scan-action@v3

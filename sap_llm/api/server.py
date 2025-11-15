@@ -48,6 +48,7 @@ from sap_llm.apop.envelope import APOPEnvelope
 from sap_llm.apop.signature import APOPSignature
 from sap_llm.monitoring.observability import observability
 from sap_llm.utils.logger import get_logger
+from sap_llm.api.auth import User, get_current_active_user, require_admin
 
 logger = get_logger(__name__)
 
@@ -733,6 +734,7 @@ async def readiness_check():
 async def extract_document(
     request: Request,
     background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),
     file: UploadFile = File(..., description="Document file to process (PDF, PNG, JPG, TIFF)"),
     expected_type: Optional[str] = None,
 ):
@@ -857,6 +859,7 @@ async def extract_document(
 @limiter.limit("20/minute")
 async def extract_document_sync(
     request: Request,
+    current_user: User = Depends(get_current_active_user),
     file: UploadFile = File(..., description="Document file to process (PDF, PNG, JPG, TIFF)"),
     expected_type: Optional[str] = None,
 ):
@@ -978,7 +981,10 @@ async def extract_document_sync(
 
 
 @app.get("/v1/jobs/{job_id}", response_model=JobStatusResponse, tags=["Jobs"])
-async def get_job_status(job_id: str):
+async def get_job_status(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+):
     """
     Get processing job status and results.
 
@@ -1081,7 +1087,10 @@ async def get_job_status(job_id: str):
 
 
 @app.delete("/v1/jobs/{job_id}", tags=["Jobs"])
-async def delete_job(job_id: str):
+async def delete_job(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+):
     """
     Delete a processing job.
 
@@ -1255,7 +1264,9 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
 
 
 @app.get("/metrics", tags=["Monitoring"])
-async def metrics():
+async def metrics(
+    current_user: User = Depends(require_admin),
+):
     """
     Prometheus metrics endpoint.
 
@@ -1314,7 +1325,9 @@ async def metrics():
 
 
 @app.get("/v1/slo", tags=["Monitoring"])
-async def get_slo_status():
+async def get_slo_status(
+    current_user: User = Depends(require_admin),
+):
     """
     Get SLO (Service Level Objective) status and error budgets.
 
@@ -1378,7 +1391,9 @@ async def get_slo_status():
 
 
 @app.get("/v1/stats", tags=["Monitoring"])
-async def get_stats():
+async def get_stats(
+    current_user: User = Depends(require_admin),
+):
     """
     Get system statistics and operational metrics.
 

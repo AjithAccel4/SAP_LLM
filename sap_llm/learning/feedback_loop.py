@@ -7,7 +7,6 @@ requests, A/B testing, automatic retraining triggers, and model versioning.
 
 import hashlib
 import json
-import random
 from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum
@@ -400,9 +399,13 @@ class FeedbackLoopSystem:
             version = self.champion_versions.get(doc_type, "v1.0.0")
             return version, "champion"
 
-        # Random assignment based on split
-        random.seed(hash(doc_id))  # Consistent assignment for same doc_id
-        use_challenger = random.random() < active_test["traffic_split"]
+        # Deterministic assignment based on hash (no random module needed)
+        # SECURITY: Using hash-based assignment instead of random for consistency
+        # This ensures the same doc_id always gets the same variant
+        hash_value = int(hashlib.sha256(doc_id.encode()).hexdigest()[:16], 16)
+        # Normalize to 0-1 range
+        normalized_value = (hash_value % 10000) / 10000.0
+        use_challenger = normalized_value < active_test["traffic_split"]
 
         if use_challenger:
             return active_test["challenger_version"], "challenger"

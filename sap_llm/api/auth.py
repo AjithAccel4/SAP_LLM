@@ -8,7 +8,7 @@ import hashlib
 import os
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -53,36 +53,76 @@ class TokenData(BaseModel):
     role: Optional[str] = None
 
 
-# Mock API key database (TODO: Replace with real database)
-API_KEYS = {
-    "dev_key_12345": User(
-        username="dev_user",
-        email="dev@example.com",
-        role="admin",
-    ),
-    "prod_key_67890": User(
-        username="prod_user",
-        email="prod@example.com",
-        role="user",
-    ),
-}
+# SECURITY: API keys and users MUST be stored in a secure database (Redis/PostgreSQL/MongoDB)
+# This is now a runtime storage that gets populated from environment variables or database
+# NEVER hardcode credentials in source code
+API_KEYS: Dict[str, User] = {}
+USERS_DB: Dict[str, Dict[str, Any]] = {}
 
 
-# Mock user database (TODO: Replace with real database)
-USERS_DB = {
-    "admin": {
-        "username": "admin",
-        "email": "admin@example.com",
-        "hashed_password": pwd_context.hash("admin123"),
-        "role": "admin",
-    },
-    "user": {
-        "username": "user",
-        "email": "user@example.com",
-        "hashed_password": pwd_context.hash("user123"),
-        "role": "user",
-    },
-}
+def _initialize_auth_from_env():
+    """
+    Initialize authentication from environment variables.
+
+    IMPORTANT: In production, use a proper database (PostgreSQL, MongoDB, etc.)
+    and secrets management (HashiCorp Vault, AWS Secrets Manager, etc.)
+
+    Environment variables expected:
+    - ADMIN_USERNAME: Admin username
+    - ADMIN_PASSWORD: Admin password (will be hashed)
+    - ADMIN_EMAIL: Admin email
+    - API_KEY_<name>: API keys for service accounts
+    """
+    global API_KEYS, USERS_DB
+
+    # Load admin user from environment (if provided)
+    admin_username = os.getenv("ADMIN_USERNAME")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
+
+    if admin_username and admin_password:
+        USERS_DB[admin_username] = {
+            "username": admin_username,
+            "email": admin_email,
+            "hashed_password": pwd_context.hash(admin_password),
+            "role": "admin",
+            "disabled": False,
+        }
+        logger.info(f"Admin user '{admin_username}' loaded from environment")
+    else:
+        logger.warning(
+            "No admin credentials found in environment. "
+            "Set ADMIN_USERNAME and ADMIN_PASSWORD environment variables. "
+            "Authentication will not work without credentials!"
+        )
+
+    # Load API keys from environment
+    # Format: API_KEY_<name>=<key_value>
+    # Example: API_KEY_SERVICE1=sk_live_abc123def456
+    api_key_count = 0
+    for env_var, env_value in os.environ.items():
+        if env_var.startswith("API_KEY_"):
+            key_name = env_var[8:].lower()  # Remove "API_KEY_" prefix
+            # Store hashed version for security
+            hashed_key = hash_api_key(env_value)
+            API_KEYS[hashed_key] = User(
+                username=f"api_{key_name}",
+                email=f"{key_name}@api.service",
+                role=os.getenv(f"API_KEY_{key_name.upper()}_ROLE", "user"),
+                disabled=False,
+            )
+            api_key_count += 1
+            logger.info(f"API key '{key_name}' loaded from environment")
+
+    if api_key_count == 0:
+        logger.warning(
+            "No API keys found in environment. "
+            "Set API_KEY_<name> environment variables for API access."
+        )
+
+
+# Initialize authentication on module load
+_initialize_auth_from_env()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -157,14 +197,14 @@ def verify_api_key(api_key: str) -> Optional[User]:
     Verify API key.
 
     Args:
-        api_key: API key string
+        api_key: API key string (plain text from request header)
 
     Returns:
         User object if valid, None otherwise
     """
-    # Hash API key for comparison
-    # In production, store hashed API keys in database
-    user = API_KEYS.get(api_key)
+    # Hash the incoming API key to compare with stored hashed keys
+    hashed_key = hash_api_key(api_key)
+    user = API_KEYS.get(hashed_key)
 
     if user is None:
         logger.warning(f"Invalid API key attempted: {api_key[:8]}...")

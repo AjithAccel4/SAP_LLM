@@ -6,7 +6,6 @@ over historical documents, exceptions, and routing decisions.
 """
 
 import json
-import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -274,10 +273,10 @@ class PMGVectorStore:
         index_path = save_path / "index.faiss"
         faiss.write_index(self.index, str(index_path))
 
-        # Save metadata
-        metadata_path = save_path / "metadata.pkl"
-        with open(metadata_path, "wb") as f:
-            pickle.dump(self.metadata, f)
+        # Save metadata - SECURITY: Use JSON instead of pickle to prevent RCE vulnerabilities
+        metadata_path = save_path / "metadata.json"
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(self.metadata, f, indent=2, ensure_ascii=False)
 
         # Save config
         config_path = save_path / "config.json"
@@ -310,10 +309,22 @@ class PMGVectorStore:
             if index_path.exists():
                 self.index = faiss.read_index(str(index_path))
 
-            # Load metadata
-            metadata_path = load_path / "metadata.pkl"
-            if metadata_path.exists():
-                with open(metadata_path, "rb") as f:
+            # Load metadata - SECURITY: Use JSON instead of pickle
+            # Try new JSON format first, fall back to old pickle format for backwards compatibility
+            metadata_json_path = load_path / "metadata.json"
+            metadata_pkl_path = load_path / "metadata.pkl"
+
+            if metadata_json_path.exists():
+                with open(metadata_json_path, "r", encoding="utf-8") as f:
+                    self.metadata = json.load(f)
+            elif metadata_pkl_path.exists():
+                # Legacy support - warn about pickle usage
+                logger.warning(
+                    "Loading metadata from pickle file (insecure). "
+                    "Please re-save to convert to JSON format."
+                )
+                import pickle
+                with open(metadata_pkl_path, "rb") as f:
                     self.metadata = pickle.load(f)
 
             logger.info(f"Vector store loaded from {load_path} ({len(self.metadata)} documents)")
