@@ -1,8 +1,13 @@
 """
-Unified SAP_LLM Model.
+Enhanced Unified SAP_LLM Model - Production Ready.
 
 Combines Vision Encoder, Language Decoder, and Reasoning Engine into a
-single end-to-end model for document processing.
+single end-to-end model for document processing with:
+- Comprehensive quality checking
+- Dedicated subtype classification
+- Self-correction mechanism
+- Business rule validation
+- Document type configuration
 """
 
 import json
@@ -11,9 +16,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
+import yaml
 
+from sap_llm.models.business_rule_validator import BusinessRuleValidator
 from sap_llm.models.language_decoder import LanguageDecoder
+from sap_llm.models.quality_checker import QualityChecker
 from sap_llm.models.reasoning_engine import ReasoningEngine
+from sap_llm.models.self_corrector import SelfCorrector
+from sap_llm.models.subtype_classifier import SubtypeClassifier
 from sap_llm.models.vision_encoder import VisionEncoder
 from sap_llm.utils.logger import get_logger
 from sap_llm.utils.timer import Timer
@@ -23,12 +33,16 @@ logger = get_logger(__name__)
 
 class UnifiedExtractorModel(nn.Module):
     """
-    Unified SAP_LLM model combining all components.
+    Enhanced Unified SAP_LLM model combining all components.
 
-    This model orchestrates the three main components:
+    This model orchestrates the three main components plus quality assurance:
     1. Vision Encoder: Visual-text feature extraction
     2. Language Decoder: Structured JSON generation
     3. Reasoning Engine: Decision making and routing
+    4. Quality Checker: Multi-dimensional quality assessment
+    5. Subtype Classifier: Rule-based subtype detection
+    6. Self-Corrector: Automatic error correction
+    7. Business Rule Validator: Comprehensive validation
 
     Total Parameters: ~13.8B
     - Vision Encoder: 300M
@@ -38,33 +52,97 @@ class UnifiedExtractorModel(nn.Module):
     Args:
         config: Configuration object
         device: Device to run models on
+        doc_types_config_path: Path to document types configuration
     """
 
     def __init__(
         self,
         config: Optional[Any] = None,
         device: str = "cuda",
+        doc_types_config_path: Optional[str] = None,
     ):
         super().__init__()
 
         self.config = config
         self.device = device
 
-        logger.info("Initializing UnifiedExtractorModel...")
+        logger.info("Initializing Enhanced UnifiedExtractorModel...")
 
-        # Initialize components
+        # Initialize ML components
         self.vision_encoder: Optional[VisionEncoder] = None
         self.language_decoder: Optional[LanguageDecoder] = None
         self.reasoning_engine: Optional[ReasoningEngine] = None
+
+        # Initialize quality assurance components
+        self.quality_checker = QualityChecker(confidence_threshold=0.70)
+        self.subtype_classifier = SubtypeClassifier()
+        self.self_corrector = SelfCorrector(
+            confidence_threshold=0.70,
+            max_attempts=2,
+        )
+        self.business_rule_validator = BusinessRuleValidator()
+
+        # Load document types configuration
+        self.doc_types_config = self._load_document_types_config(
+            doc_types_config_path
+        )
 
         # Load models if config provided
         if config is not None:
             self._load_models_from_config(config)
 
-        logger.info("UnifiedExtractorModel initialized")
+        logger.info("Enhanced UnifiedExtractorModel initialized")
+
+    def _load_document_types_config(
+        self,
+        config_path: Optional[str],
+    ) -> Dict[int, Dict[str, Any]]:
+        """Load document types configuration from YAML."""
+        if config_path is None:
+            # Try default location
+            default_path = Path(__file__).parent.parent.parent / "configs" / "document_types.yaml"
+            if default_path.exists():
+                config_path = str(default_path)
+            else:
+                logger.warning("Document types config not found, using fallback")
+                return self._get_fallback_doc_types()
+
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                logger.info(f"Loaded document types configuration from {config_path}")
+                return config.get("document_types", {})
+        except Exception as e:
+            logger.error(f"Failed to load document types config: {e}")
+            return self._get_fallback_doc_types()
+
+    def _get_fallback_doc_types(self) -> Dict[int, Dict[str, Any]]:
+        """Get fallback document types if config loading fails."""
+        doc_types = [
+            "PURCHASE_ORDER",
+            "SUPPLIER_INVOICE",
+            "SALES_ORDER",
+            "CUSTOMER_INVOICE",
+            "GOODS_RECEIPT",
+            "ADVANCED_SHIPPING_NOTICE",
+            "DELIVERY_NOTE",
+            "CREDIT_NOTE",
+            "DEBIT_NOTE",
+            "PAYMENT_ADVICE",
+            "REMITTANCE_ADVICE",
+            "STATEMENT_OF_ACCOUNT",
+            "QUOTE",
+            "CONTRACT",
+            "OTHER",
+        ]
+
+        return {
+            i: {"name": name, "subtypes": ["STANDARD"]}
+            for i, name in enumerate(doc_types)
+        }
 
     def _load_models_from_config(self, config: Any) -> None:
-        """Load all models from configuration."""
+        """Load all ML models from configuration."""
         # Vision Encoder
         if hasattr(config, 'models') and hasattr(config.models, 'vision_encoder'):
             ve_config = config.models.vision_encoder
@@ -142,15 +220,18 @@ class UnifiedExtractorModel(nn.Module):
             # Map class index to document type
             doc_type = self._map_class_to_type(predicted_class)
 
-            # Stage 4: Type Identifier (simplified - would use separate model)
-            subtype = self._identify_subtype(doc_type, ocr_text)
+            # Stage 4: Type Identifier - ENHANCED with dedicated classifier
+            subtype, subtype_conf = self.subtype_classifier.classify(
+                doc_type,
+                ocr_text,
+            )
 
             logger.info(
                 f"Classification: {doc_type} / {subtype} "
-                f"(confidence: {confidence:.4f})"
+                f"(confidence: {confidence:.4f}, subtype conf: {subtype_conf:.4f})"
             )
 
-            return doc_type, subtype, confidence
+            return doc_type, subtype, min(confidence, subtype_conf)
 
     def extract(
         self,
@@ -249,9 +330,11 @@ class UnifiedExtractorModel(nn.Module):
         schemas: Dict[str, Dict[str, Any]],
         api_schemas: List[Dict[str, Any]],
         pmg_context: Optional[Dict[str, Any]] = None,
+        field_confidences: Optional[Dict[str, float]] = None,
+        enable_self_correction: bool = True,
     ) -> Dict[str, Any]:
         """
-        Process document end-to-end through all stages.
+        Process document end-to-end through all stages with enhanced quality assurance.
 
         Args:
             image: Document image
@@ -261,9 +344,11 @@ class UnifiedExtractorModel(nn.Module):
             schemas: Document type schemas
             api_schemas: SAP API schemas
             pmg_context: PMG context for similar cases
+            field_confidences: Optional field-level confidence scores
+            enable_self_correction: Enable automatic self-correction
 
         Returns:
-            Complete processing result
+            Complete processing result with quality metrics
         """
         with Timer("Complete Document Processing"):
             result = {
@@ -302,30 +387,62 @@ class UnifiedExtractorModel(nn.Module):
                 result["extracted_data"] = extracted_data
                 result["extraction_metadata"] = extraction_metadata
 
-                # Stage 6: Quality Check (simplified)
-                quality_score = self._check_quality(extracted_data, schema)
-                result["quality_score"] = quality_score
+                # Stage 6: Quality Check - ENHANCED with comprehensive checker
+                quality_assessment = self.quality_checker.check_quality(
+                    extracted_data,
+                    schema,
+                    field_confidences,
+                )
+                result["quality_assessment"] = quality_assessment
+                result["quality_score"] = quality_assessment["overall_score"]
 
-                if quality_score < 0.90:
-                    logger.warning(
-                        f"Low quality score: {quality_score:.4f}, "
+                # ENHANCED: Self-Correction if quality is low
+                if quality_assessment["overall_score"] < 0.90 and enable_self_correction:
+                    logger.info(
+                        f"Quality score {quality_assessment['overall_score']:.2f} below threshold, "
                         "attempting self-correction"
                     )
-                    # TODO: Implement self-correction
 
-                # Stage 7: Validation (simplified)
-                violations = self._validate_business_rules(
-                    extracted_data,
+                    corrected_data, correction_metadata = self.self_corrector.correct(
+                        extracted_data,
+                        quality_assessment,
+                        ocr_text,
+                        schema,
+                        pmg_context,
+                    )
+
+                    result["extracted_data"] = corrected_data
+                    result["self_correction"] = correction_metadata
+
+                    # Re-check quality after correction
+                    quality_assessment = self.quality_checker.check_quality(
+                        corrected_data,
+                        schema,
+                        field_confidences,
+                    )
+                    result["quality_assessment_post_correction"] = quality_assessment
+                    result["quality_score"] = quality_assessment["overall_score"]
+
+                    logger.info(
+                        f"Post-correction quality: {quality_assessment['overall_score']:.2f}"
+                    )
+
+                # Stage 7: Validation - ENHANCED with comprehensive business rules
+                violations = self.business_rule_validator.validate(
+                    result["extracted_data"],
                     doc_type,
+                    context=pmg_context,
                 )
                 result["violations"] = violations
+                result["has_errors"] = any(v["severity"] == "ERROR" for v in violations)
+                result["has_warnings"] = any(v["severity"] == "WARNING" for v in violations)
 
                 # Stage 8: Routing
-                if not violations:
+                if not result["has_errors"]:
                     similar_cases = pmg_context.get("similar_routings", []) if pmg_context else []
 
                     routing_decision = self.route(
-                        extracted_data,
+                        result["extracted_data"],
                         doc_type,
                         api_schemas,
                         similar_cases,
@@ -335,7 +452,8 @@ class UnifiedExtractorModel(nn.Module):
                 else:
                     result["routing"] = {
                         "next_action": "exception_handling",
-                        "reason": "Business rule violations",
+                        "reason": "Business rule violations (errors)",
+                        "violations": [v for v in violations if v["severity"] == "ERROR"],
                     }
 
                 result["success"] = True
@@ -347,75 +465,20 @@ class UnifiedExtractorModel(nn.Module):
             return result
 
     def _map_class_to_type(self, class_idx: int) -> str:
-        """Map classification index to document type."""
-        # TODO: Load from config
-        doc_types = [
-            "PURCHASE_ORDER",
-            "SUPPLIER_INVOICE",
-            "SALES_ORDER",
-            "CUSTOMER_INVOICE",
-            "GOODS_RECEIPT",
-            "ADVANCED_SHIPPING_NOTICE",
-            "DELIVERY_NOTE",
-            "CREDIT_NOTE",
-            "DEBIT_NOTE",
-            "PAYMENT_ADVICE",
-            "REMITTANCE_ADVICE",
-            "STATEMENT_OF_ACCOUNT",
-            "QUOTE",
-            "CONTRACT",
-            "OTHER",
-        ]
+        """Map classification index to document type - ENHANCED with config."""
+        # Load from configuration
+        if class_idx in self.doc_types_config:
+            return self.doc_types_config[class_idx]["name"]
 
-        if 0 <= class_idx < len(doc_types):
-            return doc_types[class_idx]
+        logger.warning(f"Unknown class index {class_idx}, returning OTHER")
         return "OTHER"
-
-    def _identify_subtype(self, doc_type: str, ocr_text: str) -> str:
-        """Identify document subtype (simplified)."""
-        # TODO: Use dedicated subtype classifier
-        # For now, return "STANDARD"
-        return "STANDARD"
-
-    def _check_quality(self, data: Dict[str, Any], schema: Dict[str, Any]) -> float:
-        """Check extraction quality (simplified)."""
-        # TODO: Implement comprehensive quality checking
-        required_fields = schema.get("required", [])
-
-        if not required_fields:
-            return 1.0
-
-        present = sum(1 for field in required_fields if field in data and data[field])
-        completeness = present / len(required_fields)
-
-        return completeness
-
-    def _validate_business_rules(
-        self,
-        data: Dict[str, Any],
-        doc_type: str,
-    ) -> List[Dict[str, Any]]:
-        """Validate against business rules (simplified)."""
-        # TODO: Implement comprehensive business rule validation
-        violations = []
-
-        # Example: Check required fields
-        if doc_type == "SUPPLIER_INVOICE":
-            if "total_amount" not in data or data["total_amount"] <= 0:
-                violations.append({
-                    "rule": "REQUIRED_FIELD",
-                    "field": "total_amount",
-                    "message": "Total amount is required and must be positive",
-                })
-
-        return violations
 
     def save(self, output_dir: str) -> None:
         """Save all model components."""
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Saving UnifiedExtractorModel to {output_dir}")
+        logger.info(f"Saving Enhanced UnifiedExtractorModel to {output_dir}")
 
         if self.vision_encoder is not None:
             self.vision_encoder.save(str(output_path / "vision_encoder"))
@@ -443,7 +506,7 @@ class UnifiedExtractorModel(nn.Module):
         """Load all model components from directory."""
         model_path = Path(model_dir)
 
-        logger.info(f"Loading UnifiedExtractorModel from {model_dir}")
+        logger.info(f"Loading Enhanced UnifiedExtractorModel from {model_dir}")
 
         # Create instance
         model = cls(device=device)

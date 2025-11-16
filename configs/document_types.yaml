@@ -1,0 +1,148 @@
+# Document Type Configuration
+# Maps classification indices to document types and their properties
+
+document_types:
+  0:
+    name: "PURCHASE_ORDER"
+    description: "Purchase Order from buyer to supplier"
+    subtypes:
+      - STANDARD
+      - BLANKET
+      - CONTRACT
+      - EMERGENCY
+    priority: high
+
+  1:
+    name: "SUPPLIER_INVOICE"
+    description: "Invoice from supplier requesting payment"
+    subtypes:
+      - STANDARD
+      - CREDIT_NOTE
+      - DEBIT_NOTE
+      - PRO_FORMA
+      - RECURRING
+      - PREPAYMENT
+      - FINAL
+    priority: high
+
+  2:
+    name: "SALES_ORDER"
+    description: "Sales order from seller to customer"
+    subtypes:
+      - STANDARD
+      - RUSH
+      - DROP_SHIP
+      - BLANKET
+    priority: medium
+
+  3:
+    name: "CUSTOMER_INVOICE"
+    description: "Invoice from company to customer"
+    subtypes:
+      - STANDARD
+      - CREDIT_NOTE
+      - DEBIT_NOTE
+      - PRO_FORMA
+      - COMMERCIAL
+    priority: high
+
+  4:
+    name: "GOODS_RECEIPT"
+    description: "Acknowledgment of goods received"
+    subtypes:
+      - STANDARD
+      - PARTIAL
+      - FINAL
+      - RETURN
+    priority: medium
+
+  5:
+    name: "ADVANCED_SHIPPING_NOTICE"
+    description: "Notification of upcoming shipment"
+    subtypes:
+      - STANDARD
+      - PARTIAL
+      - COMPLETE
+    priority: low
+
+  6:
+    name: "DELIVERY_NOTE"
+    description: "Document accompanying delivered goods"
+    subtypes:
+      - STANDARD
+      - PARTIAL
+      - COMPLETE
+      - RETURN
+    priority: low
+
+  7:
+    name: "CREDIT_NOTE"
+    description: "Document reducing amount owed"
+    subtypes:
+      - STANDARD
+      - FULL_CREDIT
+      - PARTIAL_CREDIT
+    priority: medium
+
+  8:
+    name: "DEBIT_NOTE"
+    description: "Document increasing amount owed"
+    subtypes:
+      - STANDARD
+      - ADJUSTMENT
+    priority: medium
+
+  9:
+    name: "PAYMENT_ADVICE"
+    description: "Notification of payment made"
+    subtypes:
+      - STANDARD
+      - WIRE_TRANSFER
+      - CHECK
+      - ACH
+    priority: low
+
+  10:
+    name: "REMITTANCE_ADVICE"
+    description: "Details of payment sent"
+    subtypes:
+      - STANDARD
+      - CONSOLIDATED
+      - SINGLE
+    priority: low
+
+  11:
+    name: "STATEMENT_OF_ACCOUNT"
+    description: "Summary of account activity"
+    subtypes:
+      - STANDARD
+      - MONTHLY
+      - QUARTERLY
+      - ANNUAL
+    priority: low
+
+  12:
+    name: "QUOTE"
+    description: "Price quotation"
+    subtypes:
+      - STANDARD
+      - FORMAL
+      - INFORMAL
+    priority: low
+
+  13:
+    name: "CONTRACT"
+    description: "Legal agreement"
+    subtypes:
+      - STANDARD
+      - SERVICE
+      - SUPPLY
+      - LEASE
+    priority: low
+
+  14:
+    name: "OTHER"
+    description: "Unclassified document type"
+    subtypes:
+      - UNKNOWN
+    priority: low
