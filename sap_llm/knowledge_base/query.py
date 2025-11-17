@@ -1070,3 +1070,573 @@ class KnowledgeBaseQuery:
             "storage": storage_stats,
             "total_items": sum(storage_stats.values()),
         }
+
+    def transform_format(
+        self, source_data: Dict[str, Any], source_format: str, target_format: str
+    ) -> Dict[str, Any]:
+        """
+        Transform document data from source format to target format.
+
+        Supports transformations between:
+        - OCR extracted data → SAP API format
+        - SAP API format → Internal storage format
+        - Legacy format → Current format
+
+        Args:
+            source_data: Source document data
+            source_format: Source format identifier (e.g., "OCR", "PURCHASE_ORDER")
+            target_format: Target format identifier (e.g., "SAP_API", "SAP_ODATA")
+
+        Returns:
+            Transformed document data in target format
+        """
+        # Get field mapping for this transformation
+        field_map = self._get_field_mapping(source_format, target_format)
+
+        if not field_map:
+            logger.warning(f"No field mapping found for {source_format} → {target_format}")
+            return source_data  # Return unchanged if no mapping
+
+        target_data = {}
+
+        # Apply field mappings
+        for source_field, target_field_config in field_map.items():
+            if source_field not in source_data:
+                continue
+
+            source_value = source_data[source_field]
+
+            # Handle both simple string mappings and dict configs
+            if isinstance(target_field_config, str):
+                # Simple field name mapping
+                target_field = target_field_config
+                transformations = []
+            else:
+                # Full config with transformations
+                target_field = target_field_config.get("target_field", source_field)
+                transformations = target_field_config.get("transformations", [])
+
+            # Apply transformations
+            transformed_value = self._apply_transformations(
+                source_value,
+                transformations
+            )
+
+            target_data[target_field] = transformed_value
+
+        # Copy unmapped fields if configured
+        copy_unmapped = isinstance(field_map.get("_config"), dict) and field_map["_config"].get("copy_unmapped", False)
+        if copy_unmapped:
+            for key, value in source_data.items():
+                if key not in field_map and key not in target_data:
+                    target_data[key] = value
+
+        return target_data
+
+    def _get_field_mapping(
+        self, source_format: str, target_format: str
+    ) -> Dict[str, Any]:
+        """
+        Get field mapping configuration for format transformation.
+
+        Mappings loaded from configs or generated dynamically based on
+        document type and target system.
+
+        Args:
+            source_format: Source format identifier
+            target_format: Target format identifier
+
+        Returns:
+            Field mapping dictionary
+        """
+        # Try to get mapping from storage if available
+        mapping_key = f"{source_format}_to_{target_format}"
+
+        # Check if we have a stored mapping (future enhancement)
+        # For now, generate mappings dynamically
+
+        # Common transformations to SAP API
+        if target_format.upper() in ["SAP_API", "SAP_ODATA", "SAP"]:
+            return self._get_sap_api_mapping(source_format)
+
+        # Reverse transformation from SAP
+        elif source_format.upper() in ["SAP_API", "SAP_ODATA", "SAP"]:
+            return self._get_from_sap_mapping(target_format)
+
+        return {}
+
+    def _get_sap_api_mapping(self, source_format: str) -> Dict[str, Any]:
+        """
+        Get mapping from source format to SAP API format.
+
+        Generates comprehensive field mappings for SAP OData/BAPI calls
+        based on document type.
+
+        Args:
+            source_format: Source document format/type
+
+        Returns:
+            Field mapping dictionary with transformations
+        """
+        # Base mapping applicable to most SAP documents
+        base_mapping = {
+            "document_number": {
+                "target_field": "DocumentNumber",
+                "transformations": ["uppercase", "trim"]
+            },
+            "document_date": {
+                "target_field": "DocumentDate",
+                "transformations": ["parse_date", "format_date:YYYYMMDD"]
+            },
+            "company_code": {
+                "target_field": "CompanyCode",
+                "transformations": ["pad_left:4:0"]
+            },
+            "currency": {
+                "target_field": "DocumentCurrency",
+                "transformations": ["uppercase", "validate_iso_currency"]
+            },
+        }
+
+        # Document type specific mappings
+        source_upper = source_format.upper()
+
+        if "PURCHASE_ORDER" in source_upper or source_upper == "PO":
+            base_mapping.update({
+                "po_number": {
+                    "target_field": "PurchaseOrder",
+                    "transformations": ["uppercase", "trim"]
+                },
+                "purchase_order_number": {
+                    "target_field": "PurchaseOrder",
+                    "transformations": ["uppercase", "trim"]
+                },
+                "po_date": {
+                    "target_field": "PurchaseOrderDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "purchase_order_date": {
+                    "target_field": "PurchaseOrderDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "vendor_id": {
+                    "target_field": "Supplier",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "vendor_number": {
+                    "target_field": "Supplier",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "supplier": {
+                    "target_field": "Supplier",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "requested_delivery_date": {
+                    "target_field": "ScheduleLineDeliveryDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "delivery_date": {
+                    "target_field": "ScheduleLineDeliveryDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "total_amount": {
+                    "target_field": "TotalAmount",
+                    "transformations": ["parse_amount", "format_decimal:2"]
+                },
+                "net_amount": {
+                    "target_field": "NetAmount",
+                    "transformations": ["parse_amount", "format_decimal:2"]
+                },
+                "purchasing_organization": {
+                    "target_field": "PurchasingOrganization",
+                    "transformations": ["pad_left:4:0"]
+                },
+                "purchasing_group": {
+                    "target_field": "PurchasingGroup",
+                    "transformations": ["pad_left:3:0"]
+                },
+                "po_type": {
+                    "target_field": "PurchaseOrderType",
+                    "transformations": ["uppercase"]
+                },
+                "payment_terms": {
+                    "target_field": "PaymentTerms",
+                    "transformations": ["trim"]
+                },
+            })
+
+        elif "SUPPLIER_INVOICE" in source_upper or "INVOICE" in source_upper:
+            base_mapping.update({
+                "invoice_number": {
+                    "target_field": "SupplierInvoiceIDByInvcgParty",
+                    "transformations": ["trim"]
+                },
+                "supplier_invoice_number": {
+                    "target_field": "SupplierInvoiceIDByInvcgParty",
+                    "transformations": ["trim"]
+                },
+                "vendor_invoice_number": {
+                    "target_field": "SupplierInvoiceIDByInvcgParty",
+                    "transformations": ["trim"]
+                },
+                "invoice_date": {
+                    "target_field": "DocumentDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "posting_date": {
+                    "target_field": "PostingDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "vendor_id": {
+                    "target_field": "InvoicingParty",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "vendor_number": {
+                    "target_field": "InvoicingParty",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "supplier": {
+                    "target_field": "InvoicingParty",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "total_amount": {
+                    "target_field": "InvoiceGrossAmount",
+                    "transformations": ["parse_amount", "format_decimal:2"]
+                },
+                "gross_amount": {
+                    "target_field": "InvoiceGrossAmount",
+                    "transformations": ["parse_amount", "format_decimal:2"]
+                },
+                "tax_amount": {
+                    "target_field": "TaxAmount",
+                    "transformations": ["parse_amount", "format_decimal:2"]
+                },
+                "purchase_order": {
+                    "target_field": "PurchaseOrder",
+                    "transformations": ["uppercase", "trim"]
+                },
+                "po_number": {
+                    "target_field": "PurchaseOrder",
+                    "transformations": ["uppercase", "trim"]
+                },
+                "fiscal_year": {
+                    "target_field": "FiscalYear",
+                    "transformations": ["trim"]
+                },
+                "payment_terms": {
+                    "target_field": "PaymentTerms",
+                    "transformations": ["trim"]
+                },
+                "payment_method": {
+                    "target_field": "PaymentMethod",
+                    "transformations": ["uppercase", "trim"]
+                },
+                "due_date": {
+                    "target_field": "DueCalculationBaseDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "baseline_date": {
+                    "target_field": "DueCalculationBaseDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+            })
+
+        elif "SALES_ORDER" in source_upper or source_upper == "SO":
+            base_mapping.update({
+                "sales_order_number": {
+                    "target_field": "SalesOrderNumber",
+                    "transformations": ["uppercase", "trim"]
+                },
+                "so_number": {
+                    "target_field": "SalesOrderNumber",
+                    "transformations": ["uppercase", "trim"]
+                },
+                "order_date": {
+                    "target_field": "SalesOrderDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "sales_order_date": {
+                    "target_field": "SalesOrderDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "customer_id": {
+                    "target_field": "SoldToParty",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "customer_number": {
+                    "target_field": "SoldToParty",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "sold_to_party": {
+                    "target_field": "SoldToParty",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "ship_to_party": {
+                    "target_field": "ShipToParty",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "bill_to_party": {
+                    "target_field": "BillToParty",
+                    "transformations": ["uppercase", "trim", "pad_left:10:0"]
+                },
+                "customer_po": {
+                    "target_field": "PurchaseOrderByCustomer",
+                    "transformations": ["trim"]
+                },
+                "requested_delivery_date": {
+                    "target_field": "RequestedDeliveryDate",
+                    "transformations": ["parse_date", "format_date:YYYYMMDD"]
+                },
+                "sales_organization": {
+                    "target_field": "SalesOrganization",
+                    "transformations": ["pad_left:4:0"]
+                },
+                "distribution_channel": {
+                    "target_field": "DistributionChannel",
+                    "transformations": ["pad_left:2:0"]
+                },
+                "division": {
+                    "target_field": "OrganizationDivision",
+                    "transformations": ["pad_left:2:0"]
+                },
+                "total_amount": {
+                    "target_field": "TotalAmount",
+                    "transformations": ["parse_amount", "format_decimal:2"]
+                },
+                "net_amount": {
+                    "target_field": "NetAmount",
+                    "transformations": ["parse_amount", "format_decimal:2"]
+                },
+                "tax_amount": {
+                    "target_field": "TaxAmount",
+                    "transformations": ["parse_amount", "format_decimal:2"]
+                },
+            })
+
+        return base_mapping
+
+    def _get_from_sap_mapping(self, target_format: str) -> Dict[str, Any]:
+        """
+        Get mapping from SAP format to target format.
+
+        Reverse transformation for reading SAP responses.
+
+        Args:
+            target_format: Target format identifier
+
+        Returns:
+            Field mapping dictionary
+        """
+        # Reverse common SAP fields to internal format
+        reverse_mapping = {
+            "DocumentNumber": "document_number",
+            "DocumentDate": "document_date",
+            "CompanyCode": "company_code",
+            "DocumentCurrency": "currency",
+            "PurchaseOrder": "purchase_order",
+            "Supplier": "vendor_id",
+            "InvoicingParty": "vendor_id",
+            "SoldToParty": "customer_id",
+            "TotalAmount": "total_amount",
+            "NetAmount": "net_amount",
+            "TaxAmount": "tax_amount",
+            "FiscalYear": "fiscal_year",
+            "PostingDate": "posting_date",
+        }
+
+        return reverse_mapping
+
+    def _apply_transformations(
+        self, value: Any, transformations: List[str]
+    ) -> Any:
+        """
+        Apply transformation functions to a value.
+
+        Supported transformations:
+        - uppercase, lowercase, trim
+        - parse_date, format_date:FORMAT
+        - parse_amount, format_decimal:PLACES
+        - pad_left:LENGTH:CHAR, pad_right:LENGTH:CHAR
+        - validate_iso_currency
+
+        Args:
+            value: Value to transform
+            transformations: List of transformation strings
+
+        Returns:
+            Transformed value
+        """
+        result = value
+
+        for transformation in transformations:
+            try:
+                if transformation == "uppercase":
+                    result = str(result).upper()
+
+                elif transformation == "lowercase":
+                    result = str(result).lower()
+
+                elif transformation == "trim":
+                    result = str(result).strip()
+
+                elif transformation == "parse_date":
+                    # Parse date from various formats
+                    result = self._parse_date_value(result)
+
+                elif transformation.startswith("format_date:"):
+                    date_format = transformation.split(":", 1)[1]
+                    result = self._format_date_value(result, date_format)
+
+                elif transformation == "parse_amount":
+                    # Remove currency symbols, commas
+                    result = self._parse_amount_value(result)
+
+                elif transformation.startswith("format_decimal:"):
+                    places = int(transformation.split(":", 1)[1])
+                    result = round(float(result), places)
+
+                elif transformation.startswith("pad_left:"):
+                    parts = transformation.split(":")
+                    length = int(parts[1])
+                    char = parts[2] if len(parts) > 2 else "0"
+                    result = str(result).rjust(length, char)
+
+                elif transformation.startswith("pad_right:"):
+                    parts = transformation.split(":")
+                    length = int(parts[1])
+                    char = parts[2] if len(parts) > 2 else " "
+                    result = str(result).ljust(length, char)
+
+                elif transformation == "validate_iso_currency":
+                    result = self._validate_currency_value(result)
+
+                else:
+                    logger.warning(f"Unknown transformation: {transformation}")
+
+            except Exception as e:
+                logger.error(f"Transformation '{transformation}' failed for value '{value}': {e}")
+                # Return original value on error
+                return value
+
+        return result
+
+    def _parse_date_value(self, date_value: Any) -> datetime:
+        """
+        Parse date from various formats.
+
+        Args:
+            date_value: Date value (string, datetime, or timestamp)
+
+        Returns:
+            Parsed datetime object
+
+        Raises:
+            ValueError: If date cannot be parsed
+        """
+        if isinstance(date_value, datetime):
+            return date_value
+
+        # Try common date formats
+        date_str = str(date_value).strip()
+
+        date_formats = [
+            "%Y-%m-%d",           # ISO format: 2024-01-15
+            "%d/%m/%Y",           # European: 15/01/2024
+            "%m/%d/%Y",           # US: 01/15/2024
+            "%Y%m%d",             # SAP format: 20240115
+            "%d.%m.%Y",           # German: 15.01.2024
+            "%Y-%m-%dT%H:%M:%S",  # ISO with time
+            "%Y-%m-%d %H:%M:%S",  # SQL timestamp
+        ]
+
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+
+        # If all formats fail, raise error
+        raise ValueError(f"Cannot parse date: {date_value}")
+
+    def _format_date_value(self, date_value: Any, format_str: str) -> str:
+        """
+        Format date to specified format.
+
+        Args:
+            date_value: Date value (datetime or string)
+            format_str: Target format (YYYYMMDD, YYYY-MM-DD, DD/MM/YYYY, or strftime format)
+
+        Returns:
+            Formatted date string
+        """
+        if isinstance(date_value, str):
+            date_value = self._parse_date_value(date_value)
+
+        if format_str == "YYYYMMDD":
+            return date_value.strftime("%Y%m%d")
+        elif format_str == "YYYY-MM-DD":
+            return date_value.strftime("%Y-%m-%d")
+        elif format_str == "DD/MM/YYYY":
+            return date_value.strftime("%d/%m/%Y")
+        elif format_str == "MM/DD/YYYY":
+            return date_value.strftime("%m/%d/%Y")
+        else:
+            # Custom format string
+            return date_value.strftime(format_str)
+
+    def _parse_amount_value(self, amount_value: Any) -> float:
+        """
+        Parse amount from various formats.
+
+        Handles currency symbols, thousand separators, etc.
+
+        Args:
+            amount_value: Amount value (string, int, or float)
+
+        Returns:
+            Parsed float value
+
+        Raises:
+            ValueError: If amount cannot be parsed
+        """
+        import re
+
+        if isinstance(amount_value, (int, float)):
+            return float(amount_value)
+
+        # Remove currency symbols and commas
+        clean_value = re.sub(r'[^\d.-]', '', str(amount_value))
+
+        try:
+            return float(clean_value)
+        except (ValueError, AttributeError):
+            raise ValueError(f"Cannot parse amount: {amount_value}")
+
+    def _validate_currency_value(self, currency_code: str) -> str:
+        """
+        Validate and normalize ISO currency code.
+
+        Args:
+            currency_code: Currency code to validate
+
+        Returns:
+            Validated uppercase currency code
+
+        Raises:
+            ValueError: If currency code is invalid
+        """
+        valid_currencies = [
+            "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "INR",
+            "CNY", "SEK", "NOK", "DKK", "SGD", "HKD", "NZD", "KRW",
+            "MXN", "BRL", "ZAR", "RUB", "TRY", "PLN", "THB", "MYR"
+        ]
+
+        code = str(currency_code).upper().strip()
+
+        if len(code) != 3:
+            raise ValueError(f"Invalid currency code length: {code}")
+
+        if code not in valid_currencies:
+            logger.warning(f"Currency code not in common list: {code}")
+
+        return code
