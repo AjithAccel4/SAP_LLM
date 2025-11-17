@@ -1,0 +1,113 @@
+groups:
+  - name: sap_llm_critical_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: rate(sap_llm_errors_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: pipeline
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/high-error-rate"
+      
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(sap_llm_request_duration_seconds_bucket[5m])) > 0.6
+        for: 5m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "P95 latency exceeds target"
+          description: "P95 latency is {{ $value }}s (target: <0.6s)"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/high-latency"
+      
+      - alert: LowThroughput
+        expr: rate(sap_llm_documents_processed_total[1m]) < 1666
+        for: 5m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Throughput below target"
+          description: "Current: {{ $value | humanize }}/min (target: 100k/min)"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/low-throughput"
+      
+      - alert: MemoryUsageHigh
+        expr: process_resident_memory_bytes > 10e9
+        for: 10m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "Memory usage high"
+          description: "Memory: {{ $value | humanizeBytes }} (threshold: 10GB)"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/high-memory"
+      
+      - alert: ModelInferenceFailure
+        expr: rate(sap_llm_model_inference_failures_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: models
+        annotations:
+          summary: "Model inference failures detected"
+          description: "{{ $value }} inference failures per second"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/model-inference-failure"
+      
+      - alert: GPUUtilizationLow
+        expr: sap_llm_gpu_utilization_percent < 30
+        for: 15m
+        labels:
+          severity: info
+          component: resources
+        annotations:
+          summary: "GPU utilization is low"
+          description: "GPU utilization: {{ $value }}% (expected: >30%)"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/low-gpu-utilization"
+      
+      - alert: SLAViolation
+        expr: sap_llm_sla_violations_total > 100
+        for: 5m
+        labels:
+          severity: critical
+          component: sla
+        annotations:
+          summary: "SLA violations detected"
+          description: "{{ $value }} SLA violations in the last 5 minutes"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/sla-violation"
+      
+      - alert: DatabaseConnectionFailure
+        expr: up{job="mongodb"} == 0 or up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection failure"
+          description: "{{ $labels.job }} is down"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/database-connection-failure"
+      
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "Disk space running low"
+          description: "Available: {{ $value | humanizePercentage }} (threshold: <10%)"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/low-disk-space"
+      
+      - alert: APIEndpointDown
+        expr: up{job="sap-llm-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "API endpoint is down"
+          description: "SAP_LLM API is unreachable"
+          runbook_url: "https://docs.sap-llm.example.com/runbooks/api-endpoint-down"
