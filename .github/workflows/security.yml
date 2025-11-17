@@ -84,7 +84,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Upload dependency scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: dependency-scan-results
@@ -182,7 +182,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Upload code security results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: code-security-results
@@ -482,7 +482,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Upload license report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: license-report
           path: |
