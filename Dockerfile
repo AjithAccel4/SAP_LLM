@@ -2,7 +2,7 @@
 # Optimized for production deployment with GPU support
 
 # Stage 1: Base image with CUDA support
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 AS base
+FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04 AS base
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
