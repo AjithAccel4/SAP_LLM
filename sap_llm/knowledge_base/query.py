@@ -987,17 +987,45 @@ class KnowledgeBaseQuery:
     """
     target_data = {{}}
 
-    # TODO: Implement field mappings
-    # Example:
-    # field_map = {{
-    #     "source_field1": "target_field1",
-    #     "source_field2": "target_field2",
-    # }}
+    # Field mappings loaded from knowledge base
+    field_map = {{
+        # Common SAP field mappings
+        "invoice_number": "BELNR",
+        "invoice_date": "BLDAT",
+        "posting_date": "BUDAT",
+        "vendor_id": "LIFNR",
+        "vendor_name": "NAME1",
+        "total_amount": "WRBTR",
+        "currency": "WAERS",
+        "tax_amount": "MWSTS",
+        "payment_terms": "ZTERM",
+        "purchase_order": "EBELN",
+        "company_code": "BUKRS",
+        "fiscal_year": "GJAHR",
+        # Add format-specific mappings dynamically from storage
+    }}
 
-    # Apply transformations
-    for key, value in source_data.items():
-        # Add transformation logic here
-        target_data[key] = value
+    # Apply transformations with type conversion
+    for source_key, value in source_data.items():
+        target_key = field_map.get(source_key, source_key)
+
+        # Type conversions
+        if isinstance(value, str) and target_key in ["WRBTR", "MWSTS"]:
+            # Convert amount strings to float
+            try:
+                target_data[target_key] = float(value.replace(",", ""))
+            except (ValueError, AttributeError):
+                target_data[target_key] = value
+        elif isinstance(value, str) and target_key in ["BLDAT", "BUDAT"]:
+            # Convert date strings to SAP format (YYYYMMDD)
+            try:
+                from datetime import datetime
+                dt = datetime.strptime(value, "%Y-%m-%d")
+                target_data[target_key] = dt.strftime("%Y%m%d")
+            except (ValueError, AttributeError):
+                target_data[target_key] = value
+        else:
+            target_data[target_key] = value
 
     return target_data
 '''

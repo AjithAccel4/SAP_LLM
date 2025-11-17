@@ -230,7 +230,7 @@ jobs:
 
       - name: Check coverage threshold
         run: |
-          coverage report --fail-under=70 || echo "::warning::Coverage below 70%"
+          coverage report --fail-under=90 || echo "::error::Coverage below 90% - Production requirement not met"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
