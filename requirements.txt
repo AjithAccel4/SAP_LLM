@@ -84,3 +84,12 @@ faiss-cpu==1.7.4
 
 # ONNX Runtime (CPU version - use onnxruntime-gpu==1.16.3 for GPU)
 onnxruntime==1.16.3
+
+# Data pipeline dependencies (for training corpus building)
+boto3==1.34.18  # S3/MinIO support
+beautifulsoup4==4.12.2  # Web scraping
+reportlab==4.0.7  # PDF generation
+faker==22.0.0  # Synthetic data generation
+albumentations==1.3.1  # Image augmentation (optional)
+pyspark==3.5.0  # Distributed data processing
+psycopg2-binary==2.9.9  # PostgreSQL support
