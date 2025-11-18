@@ -3,9 +3,11 @@ Stage 2: Preprocessing - OCR & Image Enhancement
 
 Extracts text and bounding boxes from documents with image enhancement.
 Supports multiple OCR engines: Tesseract, EasyOCR, Custom TrOCR.
+Supports video documents with keyframe extraction.
 """
 
 from typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -16,6 +18,13 @@ from sap_llm.stages.base_stage import BaseStage
 from sap_llm.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+try:
+    from scenedetect import detect, ContentDetector, AdaptiveDetector
+    SCENEDETECT_AVAILABLE = True
+except ImportError:
+    SCENEDETECT_AVAILABLE = False
+    logger.warning("PySceneDetect not available. Install with: pip install scenedetect[opencv]")
 
 try:
     from transformers import TrOCRProcessor, VisionEncoderDecoderModel
@@ -44,6 +53,9 @@ class PreprocessingStage(BaseStage):
     Latency: 300-800ms per page
     """
 
+    # Supported video formats
+    VIDEO_FORMATS = [".mp4", ".avi", ".mov", ".mkv", ".webm"]
+
     def __init__(self, config: Any = None):
         super().__init__(config)
 
@@ -51,6 +63,11 @@ class PreprocessingStage(BaseStage):
         self.target_dpi = getattr(config, "target_dpi", 300) if config else 300
         self.languages = getattr(config, "languages", ["en"]) if config else ["en"]
         self.trocr_model_name = getattr(config, "trocr_model_name", "microsoft/trocr-base-handwritten") if config else "microsoft/trocr-base-handwritten"
+
+        # Video processing config
+        self.enable_video_processing = getattr(config, "enable_video_processing", True) if config else True
+        self.max_keyframes = getattr(config, "max_keyframes", 30) if config else 30
+        self.scene_threshold = getattr(config, "scene_threshold", 27.0) if config else 27.0
 
         # TrOCR model cache (lazy initialization)
         self.trocr_processor: Optional[Any] = None
@@ -60,6 +77,7 @@ class PreprocessingStage(BaseStage):
         self.ocr = self._init_ocr_engine()
 
         logger.info(f"OCR Engine: {self.ocr_engine}")
+        logger.info(f"Video Processing: {'Enabled' if self.enable_video_processing else 'Disabled'}")
 
     def _init_ocr_engine(self):
         """Initialize selected OCR engine."""
@@ -94,13 +112,22 @@ class PreprocessingStage(BaseStage):
                 "pages": List[Image],
                 "ocr_results": List[Dict],  # Per page
                 "enhanced_images": List[Image],
+                "document_type": str,  # "pdf", "image", or "video"
+                "keyframes": Optional[List[Dict]],  # For videos
+                "temporal_consistency": Optional[float],  # For videos
             }
         """
         document_path = input_data.get("document_path")
         if not document_path:
             raise ValueError("document_path is required")
 
-        # Convert PDF to images
+        doc_path = Path(document_path)
+
+        # Check if video
+        if self.enable_video_processing and doc_path.suffix.lower() in self.VIDEO_FORMATS:
+            return self._process_video(document_path)
+
+        # Convert PDF/image to images
         pages = self._pdf_to_images(document_path)
         logger.info(f"Extracted {len(pages)} pages")
 
@@ -120,11 +147,14 @@ class PreprocessingStage(BaseStage):
             ocr_result["page_number"] = page_num + 1
             ocr_results.append(ocr_result)
 
+        document_type = "pdf" if doc_path.suffix.lower() == ".pdf" else "image"
+
         return {
             "pages": pages,
             "enhanced_images": enhanced_images,
             "ocr_results": ocr_results,
             "num_pages": len(pages),
+            "document_type": document_type,
         }
 
     def _pdf_to_images(self, document_path: str) -> List[Image.Image]:
@@ -461,3 +491,202 @@ class PreprocessingStage(BaseStage):
                 "boxes": [],
                 "confidences": [],
             }
+
+    def _process_video(self, video_path: str) -> Dict[str, Any]:
+        """
+        Process video document with keyframe extraction.
+
+        Args:
+            video_path: Path to video file
+
+        Returns:
+            {
+                "pages": List[Image],  # Keyframes
+                "ocr_results": List[Dict],  # Per keyframe
+                "enhanced_images": List[Image],
+                "document_type": "video",
+                "keyframes": List[Dict],  # Keyframe metadata
+                "temporal_consistency": float,  # Consistency score
+                "fps": float,
+                "duration": float,
+            }
+        """
+        if not SCENEDETECT_AVAILABLE:
+            raise ImportError(
+                "PySceneDetect required for video processing. "
+                "Install with: pip install scenedetect[opencv]"
+            )
+
+        logger.info(f"Processing video: {video_path}")
+
+        # Extract keyframes using scene detection
+        keyframes_data = self._extract_keyframes(video_path)
+
+        # Process each keyframe with OCR
+        ocr_results = []
+        enhanced_images = []
+        keyframe_images = []
+
+        for kf_data in keyframes_data:
+            frame_img = kf_data["image"]
+            keyframe_images.append(frame_img)
+
+            # Enhance image
+            enhanced = self._enhance_image(frame_img)
+            enhanced_images.append(enhanced)
+
+            # OCR
+            ocr_result = self._run_ocr(enhanced)
+            ocr_result["page_number"] = kf_data["index"]
+            ocr_result["timestamp"] = kf_data["timestamp"]
+            ocr_result["scene_number"] = kf_data["scene_number"]
+            ocr_results.append(ocr_result)
+
+        # Calculate temporal consistency
+        consistency_score = self._validate_temporal_consistency(ocr_results)
+
+        logger.info(
+            f"Extracted {len(keyframes_data)} keyframes with "
+            f"temporal consistency: {consistency_score:.2f}"
+        )
+
+        # Get video metadata
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        duration = frame_count / fps if fps > 0 else 0
+        cap.release()
+
+        return {
+            "pages": keyframe_images,
+            "enhanced_images": enhanced_images,
+            "ocr_results": ocr_results,
+            "num_pages": len(keyframes_data),
+            "document_type": "video",
+            "keyframes": [
+                {
+                    "index": kf["index"],
+                    "timestamp": kf["timestamp"],
+                    "scene_number": kf["scene_number"],
+                }
+                for kf in keyframes_data
+            ],
+            "temporal_consistency": consistency_score,
+            "fps": fps,
+            "duration": duration,
+        }
+
+    def _extract_keyframes(self, video_path: str) -> List[Dict[str, Any]]:
+        """
+        Extract keyframes from video using scene detection.
+
+        Args:
+            video_path: Path to video file
+
+        Returns:
+            List of keyframe data with images and metadata
+        """
+        logger.debug("Detecting scenes in video")
+
+        # Detect scenes using PySceneDetect
+        scene_list = detect(
+            video_path,
+            ContentDetector(threshold=self.scene_threshold)
+        )
+
+        logger.info(f"Detected {len(scene_list)} scenes")
+
+        # Open video to extract frames
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        keyframes_data = []
+
+        # Extract one frame per scene (middle frame)
+        for scene_idx, scene in enumerate(scene_list):
+            if len(keyframes_data) >= self.max_keyframes:
+                logger.warning(
+                    f"Reached max keyframes limit ({self.max_keyframes}). "
+                    f"Stopping extraction."
+                )
+                break
+
+            # Get middle frame of the scene
+            start_frame = scene[0].get_frames()
+            end_frame = scene[1].get_frames()
+            middle_frame = (start_frame + end_frame) // 2
+
+            # Seek to frame
+            cap.set(cv2.CAP_PROP_POS_FRAMES, middle_frame)
+            ret, frame = cap.read()
+
+            if not ret:
+                logger.warning(f"Failed to read frame {middle_frame}")
+                continue
+
+            # Convert BGR to RGB
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_img = Image.fromarray(frame_rgb)
+
+            # Calculate timestamp
+            timestamp = middle_frame / fps if fps > 0 else 0
+
+            keyframes_data.append({
+                "index": len(keyframes_data),
+                "frame_number": middle_frame,
+                "timestamp": timestamp,
+                "scene_number": scene_idx,
+                "image": frame_img,
+            })
+
+        cap.release()
+
+        logger.info(f"Extracted {len(keyframes_data)} keyframes")
+
+        return keyframes_data
+
+    def _validate_temporal_consistency(
+        self,
+        ocr_results: List[Dict[str, Any]]
+    ) -> float:
+        """
+        Validate temporal consistency across video frames.
+
+        Checks that extracted data is consistent across keyframes.
+
+        Args:
+            ocr_results: OCR results from all keyframes
+
+        Returns:
+            Consistency score (0-1)
+        """
+        if len(ocr_results) < 2:
+            return 1.0
+
+        # Calculate text similarity between consecutive frames
+        from difflib import SequenceMatcher
+
+        similarities = []
+
+        for i in range(len(ocr_results) - 1):
+            text1 = ocr_results[i]["text"]
+            text2 = ocr_results[i + 1]["text"]
+
+            # Calculate similarity
+            similarity = SequenceMatcher(None, text1, text2).ratio()
+            similarities.append(similarity)
+
+        # Average similarity
+        avg_similarity = np.mean(similarities) if similarities else 0.0
+
+        # High similarity across frames = high consistency
+        # For invoice videos, we expect some variation as pages/sections change
+        # So we normalize: 0.3-0.7 similarity is considered good
+        normalized_score = min(1.0, max(0.0, (avg_similarity - 0.2) / 0.5))
+
+        logger.debug(
+            f"Temporal consistency: {normalized_score:.2f} "
+            f"(avg similarity: {avg_similarity:.2f})"
+        )
+
+        return normalized_score
