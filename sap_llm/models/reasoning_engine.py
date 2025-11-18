@@ -15,6 +15,13 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     GenerationConfig,
+    BitsAndBytesConfig,
+)
+from peft import (
+    LoraConfig,
+    get_peft_model,
+    prepare_model_for_kbit_training,
+    TaskType,
 )
 
 from sap_llm.utils.logger import get_logger
@@ -48,6 +55,8 @@ class ReasoningEngine(nn.Module):
         device: str = "cuda",
         precision: str = "int8",
         max_length: int = 4096,
+        use_lora: bool = False,
+        lora_config: Optional[Dict[str, Any]] = None,
     ):
         super().__init__()
 
@@ -55,6 +64,7 @@ class ReasoningEngine(nn.Module):
         self.device = device
         self.precision = precision
         self.max_length = max_length
+        self.use_lora = use_lora
 
         logger.info(f"Initializing ReasoningEngine: {model_name}")
         logger.info(f"Device: {device}, Precision: {precision}")
@@ -68,8 +78,42 @@ class ReasoningEngine(nn.Module):
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Load model with quantization
-        if precision == "int8":
+        # Configure quantization for QLoRA (4-bit)
+        if precision == "int4" and use_lora:
+            logger.info("Loading model with 4-bit quantization for QLoRA...")
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+            )
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                quantization_config=bnb_config,
+                device_map="auto",
+                trust_remote_code=True,
+            )
+
+            # Prepare for k-bit training
+            self.model = prepare_model_for_kbit_training(self.model)
+
+            # Apply LoRA
+            if lora_config is None:
+                lora_config = {
+                    "r": 16,
+                    "lora_alpha": 32,
+                    "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj"],
+                    "lora_dropout": 0.05,
+                    "bias": "none",
+                    "task_type": TaskType.CAUSAL_LM,
+                }
+
+            peft_config = LoraConfig(**lora_config)
+            self.model = get_peft_model(self.model, peft_config)
+            logger.info(f"LoRA applied: trainable params = {self.model.print_trainable_parameters()}")
+
+        # Load model with quantization (inference mode)
+        elif precision == "int8":
             logger.info("Loading model with 8-bit quantization...")
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
@@ -79,11 +123,15 @@ class ReasoningEngine(nn.Module):
             )
         elif precision == "int4":
             logger.info("Loading model with 4-bit quantization...")
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+            )
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                load_in_4bit=True,
+                quantization_config=bnb_config,
                 device_map="auto",
-                torch_dtype=torch.float16,
             )
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
