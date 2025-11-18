@@ -485,14 +485,25 @@ web_search:
     duckduckgo: 30
     duckduckgo_daily: 1000
 
-  # Caching Configuration
+  # Caching Configuration (3-tier: L1=memory, L2=Redis, L3=disk)
   cache:
+    # L2: Redis cache
     host: "${REDIS_HOST:-localhost}"
     port: 6379
     db: 1  # Separate DB from main cache
     password: "${REDIS_PASSWORD}"
-    ttl: 86400  # Cache results for 24 hours
+    ttl: 86400  # Cache results for 24 hours (default)
     compress_threshold: 1024  # Compress results > 1KB
+
+    # L3: Disk cache (persistent fallback)
+    disk_cache_dir: "/tmp/sap_llm_search_cache"
+    max_disk_cache_size_mb: 1000  # Max 1GB disk cache
+
+    # TTL Strategy (in seconds)
+    ttl_vendor_info: 604800     # 7 days
+    ttl_product_codes: 2592000  # 30 days
+    ttl_tax_rates: 86400        # 1 day
+    ttl_exchange_rates: 3600    # 1 hour
 
   # Trusted Domains (boosted in ranking)
   trusted_domains:

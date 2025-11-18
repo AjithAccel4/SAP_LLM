@@ -14,6 +14,250 @@ from sap_llm.web_search.search_engine import WebSearchEngine
 logger = get_logger(__name__)
 
 
+class ExtractionEnhancer:
+    """
+    Enhances extraction stage with real-time web search for missing fields.
+
+    Provides:
+    - Automatic vendor name lookup for missing vendor_name fields
+    - Product code enrichment from manufacturer websites
+    - Currency exchange rate lookup for multi-currency invoices
+    - Tax rate validation from government sources
+    """
+
+    def __init__(
+        self,
+        search_engine: WebSearchEngine,
+        enabled: bool = True
+    ):
+        """
+        Initialize extraction enhancer.
+
+        Args:
+            search_engine: WebSearchEngine instance
+            enabled: Whether web enrichment is enabled
+        """
+        self.search_engine = search_engine
+        self.enricher = EntityEnricher(search_engine)
+        self.enabled = enabled
+        self.enrichment_stats = {
+            "vendor_enrichments": 0,
+            "product_enrichments": 0,
+            "currency_lookups": 0,
+            "tax_rate_lookups": 0
+        }
+
+    def enrich_extracted_data(
+        self,
+        extracted_data: Dict[str, Any],
+        document_type: str = "INVOICE"
+    ) -> Dict[str, Any]:
+        """
+        Enrich extracted data with web search in real-time.
+
+        Args:
+            extracted_data: Extracted data from document
+            document_type: Type of document (INVOICE, PURCHASE_ORDER, etc.)
+
+        Returns:
+            Enriched extracted data with additional fields
+        """
+        if not self.enabled:
+            return extracted_data
+
+        enriched = extracted_data.copy()
+        enriched["web_enrichments"] = {}
+
+        logger.info(f"Enriching extracted {document_type} data with web search")
+
+        # 1. Enrich vendor information if missing or incomplete
+        if "vendor_name" in enriched:
+            vendor_enrichment = self._enrich_vendor_field(
+                enriched.get("vendor_name"),
+                enriched.get("vendor_id"),
+                enriched.get("country")
+            )
+            if vendor_enrichment:
+                enriched["web_enrichments"]["vendor"] = vendor_enrichment
+                self.enrichment_stats["vendor_enrichments"] += 1
+
+                # Fill missing fields
+                if not enriched.get("vendor_address") and vendor_enrichment.get("address"):
+                    enriched["vendor_address"] = vendor_enrichment["address"]
+                if not enriched.get("vendor_tax_id") and vendor_enrichment.get("tax_id"):
+                    enriched["vendor_tax_id"] = vendor_enrichment["tax_id"]
+
+        # 2. Enrich product codes and descriptions
+        if "line_items" in enriched:
+            for i, item in enumerate(enriched["line_items"]):
+                product_enrichment = self._enrich_product_field(
+                    item.get("description"),
+                    item.get("material_number"),
+                    item.get("manufacturer")
+                )
+                if product_enrichment:
+                    if "line_item_enrichments" not in enriched["web_enrichments"]:
+                        enriched["web_enrichments"]["line_item_enrichments"] = {}
+                    enriched["web_enrichments"]["line_item_enrichments"][i] = product_enrichment
+                    self.enrichment_stats["product_enrichments"] += 1
+
+                    # Fill missing product code if found
+                    if not item.get("material_number") and product_enrichment.get("product_code"):
+                        item["material_number"] = product_enrichment["product_code"]
+
+        # 3. Lookup currency exchange rates for multi-currency invoices
+        if enriched.get("currency") and enriched["currency"] != "USD":
+            exchange_rate = self._get_exchange_rate(
+                enriched["currency"],
+                "USD",
+                enriched.get("invoice_date")
+            )
+            if exchange_rate:
+                enriched["web_enrichments"]["exchange_rate"] = exchange_rate
+                enriched["amount_usd"] = enriched.get("total_amount", 0) * exchange_rate["rate"]
+                self.enrichment_stats["currency_lookups"] += 1
+
+        # 4. Lookup tax rates for validation
+        if enriched.get("country") and enriched.get("tax_amount"):
+            tax_rate_info = self._get_tax_rate(
+                enriched["country"],
+                enriched.get("tax_type", "VAT")
+            )
+            if tax_rate_info:
+                enriched["web_enrichments"]["tax_rate"] = tax_rate_info
+                self.enrichment_stats["tax_rate_lookups"] += 1
+
+        return enriched
+
+    def _enrich_vendor_field(
+        self,
+        vendor_name: Optional[str],
+        vendor_id: Optional[str],
+        country: Optional[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Enrich vendor information using web search."""
+        if not vendor_name:
+            return None
+
+        try:
+            vendor_info = self.enricher.enrich_vendor(
+                vendor_name,
+                country=country,
+                additional_context={"vendor_id": vendor_id}
+            )
+
+            if vendor_info.get("verified"):
+                extracted_data = vendor_info.get("extracted_data", {})
+                return {
+                    "verified": True,
+                    "confidence": vendor_info.get("confidence", 0.0),
+                    "address": extracted_data.get("address"),
+                    "tax_id": extracted_data.get("tax_id"),
+                    "website": extracted_data.get("website"),
+                    "sources": vendor_info.get("sources", [])[:2]
+                }
+        except Exception as e:
+            logger.debug(f"Vendor enrichment error: {e}")
+
+        return None
+
+    def _enrich_product_field(
+        self,
+        description: Optional[str],
+        material_number: Optional[str],
+        manufacturer: Optional[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Enrich product information using web search."""
+        if not description:
+            return None
+
+        try:
+            product_info = self.enricher.enrich_product(
+                description,
+                manufacturer=manufacturer,
+                product_id=material_number
+            )
+
+            if product_info.get("verified"):
+                extracted_data = product_info.get("extracted_data", {})
+                return {
+                    "verified": True,
+                    "confidence": product_info.get("confidence", 0.0),
+                    "product_code": extracted_data.get("product_code"),
+                    "manufacturer": extracted_data.get("manufacturer"),
+                    "market_price": extracted_data.get("price"),
+                    "sources": product_info.get("sources", [])[:2]
+                }
+        except Exception as e:
+            logger.debug(f"Product enrichment error: {e}")
+
+        return None
+
+    def _get_exchange_rate(
+        self,
+        from_currency: str,
+        to_currency: str,
+        date: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Get currency exchange rate."""
+        try:
+            rate_info = self.search_engine.get_exchange_rate(
+                from_currency=from_currency,
+                to_currency=to_currency,
+                date=date
+            )
+
+            if rate_info and rate_info.get("rate"):
+                return {
+                    "from_currency": from_currency,
+                    "to_currency": to_currency,
+                    "rate": rate_info["rate"],
+                    "date": rate_info.get("date"),
+                    "source": rate_info.get("source")
+                }
+        except Exception as e:
+            logger.debug(f"Exchange rate lookup error: {e}")
+
+        return None
+
+    def _get_tax_rate(
+        self,
+        country: str,
+        tax_type: str = "VAT"
+    ) -> Optional[Dict[str, Any]]:
+        """Get tax rate for country."""
+        try:
+            query = f"{country} {tax_type} rate official 2024 2025"
+            results = self.search_engine.search(
+                query,
+                num_results=5,
+                filters={"domains": ["gov", "europa.eu", "oecd.org"]}
+            )
+
+            if results:
+                # Simple extraction - could be enhanced with NLP
+                import re
+                for result in results:
+                    snippet = result.get("snippet", "")
+                    # Look for percentage patterns
+                    rate_match = re.search(r'(\d+(?:\.\d+)?)\s*%', snippet)
+                    if rate_match:
+                        return {
+                            "country": country,
+                            "tax_type": tax_type,
+                            "rate": float(rate_match.group(1)),
+                            "source": result.get("url")
+                        }
+        except Exception as e:
+            logger.debug(f"Tax rate lookup error: {e}")
+
+        return None
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get enrichment statistics."""
+        return self.enrichment_stats.copy()
+
+
 class ValidationEnhancer:
     """
     Enhances validation stage with web search capabilities.
