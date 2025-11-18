@@ -1,17 +1,25 @@
 """
-Multi-Modal Fusion Layer for Vision + Language Integration.
+Advanced Multi-Modal Fusion Layer for Vision + Language + Audio + Video Integration.
 
-Combines visual features from Vision Encoder with textual features from
-Language Decoder using advanced fusion techniques:
+Combines multiple modalities using advanced fusion techniques:
+- Vision: Image features from document pages
+- Text: OCR and language features
+- Audio: Speech-to-text transcriptions
+- Video: Temporal keyframe features
+
+Fusion Techniques:
 - Cross-attention mechanism (32 heads)
-- Intelligent gating (when to trust vision vs text)
+- Intelligent gating (modality confidence weighting)
 - Positional encoding for spatial relationships
+- Temporal encoding for video sequences
+- Cross-modal consistency checks
 - Learnable fusion weights
 - Attention visualization for interpretability
 
 Target Metrics:
-- Fusion accuracy: +5% vs simple concatenation
-- Latency overhead: <50ms
+- Multi-modal fusion accuracy: ≥95%
+- Fusion accuracy improvement: +5% vs simple concatenation
+- Latency overhead: <50ms for vision+text, <100ms for all modalities
 - Interpretability: Attention weights visualizable
 """
 
@@ -569,3 +577,530 @@ class FusionBlock(nn.Module):
         }
 
         return vision_features, text_features, attention_maps
+
+
+class TemporalEncoder(nn.Module):
+    """
+    Temporal encoding for video sequences.
+
+    Encodes frame positions and time information for video keyframes.
+    """
+
+    def __init__(self, d_model: int, max_frames: int = 100):
+        """
+        Initialize temporal encoder.
+
+        Args:
+            d_model: Embedding dimension
+            max_frames: Maximum number of frames
+        """
+        super().__init__()
+
+        self.d_model = d_model
+
+        # Create temporal positional encodings
+        pe = torch.zeros(max_frames, d_model)
+        position = torch.arange(0, max_frames, dtype=torch.float).unsqueeze(1)
+
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2).float() *
+            (-math.log(10000.0) / d_model)
+        )
+
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: torch.Tensor, frame_indices: torch.Tensor) -> torch.Tensor:
+        """
+        Add temporal encoding.
+
+        Args:
+            x: Input tensor [batch_size, num_frames, d_model]
+            frame_indices: Frame indices [batch_size, num_frames]
+
+        Returns:
+            Tensor with temporal encoding added
+        """
+        batch_size, num_frames, _ = x.shape
+
+        # Add temporal encoding based on frame indices
+        temporal_enc = torch.zeros_like(x)
+
+        for i in range(batch_size):
+            for j in range(num_frames):
+                frame_idx = frame_indices[i, j].long()
+                if frame_idx < len(self.pe):
+                    temporal_enc[i, j] = self.pe[frame_idx]
+
+        return x + temporal_enc
+
+
+class AudioFeatureEncoder(nn.Module):
+    """
+    Encode audio features for fusion.
+
+    Processes audio transcription embeddings and confidence scores.
+    """
+
+    def __init__(
+        self,
+        audio_dim: int = 768,
+        output_dim: int = 768,
+    ):
+        """
+        Initialize audio feature encoder.
+
+        Args:
+            audio_dim: Input audio feature dimension
+            output_dim: Output feature dimension
+        """
+        super().__init__()
+
+        self.projection = nn.Linear(audio_dim, output_dim)
+        self.norm = nn.LayerNorm(output_dim)
+
+        # Confidence embedding
+        self.confidence_embedding = nn.Embedding(100, output_dim)
+
+    def forward(
+        self,
+        audio_features: torch.Tensor,
+        confidence_scores: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """
+        Encode audio features.
+
+        Args:
+            audio_features: Audio features [batch_size, seq_len, audio_dim]
+            confidence_scores: Confidence scores [batch_size, seq_len] (0-1)
+
+        Returns:
+            Encoded features [batch_size, seq_len, output_dim]
+        """
+        # Project audio features
+        encoded = self.projection(audio_features)
+
+        # Add confidence information if available
+        if confidence_scores is not None:
+            # Convert confidence to discrete bins (0-99)
+            confidence_bins = (confidence_scores * 99).long()
+            confidence_bins = torch.clamp(confidence_bins, 0, 99)
+
+            # Add confidence embeddings
+            conf_emb = self.confidence_embedding(confidence_bins)
+            encoded = encoded + conf_emb
+
+        # Normalize
+        encoded = self.norm(encoded)
+
+        return encoded
+
+
+class VideoFeatureEncoder(nn.Module):
+    """
+    Encode video features for fusion.
+
+    Processes keyframe features with temporal information.
+    """
+
+    def __init__(
+        self,
+        video_dim: int = 768,
+        output_dim: int = 768,
+        max_frames: int = 100,
+    ):
+        """
+        Initialize video feature encoder.
+
+        Args:
+            video_dim: Input video feature dimension
+            output_dim: Output feature dimension
+            max_frames: Maximum number of keyframes
+        """
+        super().__init__()
+
+        self.projection = nn.Linear(video_dim, output_dim)
+        self.temporal_encoder = TemporalEncoder(output_dim, max_frames)
+        self.norm = nn.LayerNorm(output_dim)
+
+    def forward(
+        self,
+        video_features: torch.Tensor,
+        frame_indices: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """
+        Encode video features.
+
+        Args:
+            video_features: Video features [batch_size, num_frames, video_dim]
+            frame_indices: Frame indices [batch_size, num_frames]
+
+        Returns:
+            Encoded features [batch_size, num_frames, output_dim]
+        """
+        # Project video features
+        encoded = self.projection(video_features)
+
+        # Add temporal encoding
+        if frame_indices is not None:
+            encoded = self.temporal_encoder(encoded, frame_indices)
+
+        # Normalize
+        encoded = self.norm(encoded)
+
+        return encoded
+
+
+class CrossModalConsistencyChecker(nn.Module):
+    """
+    Check consistency across different modalities.
+
+    Validates that information from different modalities is consistent.
+    """
+
+    def __init__(self, dim: int):
+        """
+        Initialize consistency checker.
+
+        Args:
+            dim: Feature dimension
+        """
+        super().__init__()
+
+        # Similarity network
+        self.similarity_net = nn.Sequential(
+            nn.Linear(dim * 2, dim),
+            nn.ReLU(),
+            nn.Linear(dim, 1),
+            nn.Sigmoid(),
+        )
+
+    def forward(
+        self,
+        features1: torch.Tensor,
+        features2: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Compute consistency score between two modalities.
+
+        Args:
+            features1: Features from modality 1 [batch_size, seq_len, dim]
+            features2: Features from modality 2 [batch_size, seq_len, dim]
+
+        Returns:
+            Consistency scores [batch_size, seq_len, 1]
+        """
+        # Concatenate features
+        concat = torch.cat([features1, features2], dim=-1)
+
+        # Compute similarity
+        consistency = self.similarity_net(concat)
+
+        return consistency
+
+
+class AdvancedMultiModalFusion(nn.Module):
+    """
+    Advanced Multi-Modal Fusion supporting Vision + Text + Audio + Video.
+
+    This extends the basic MultiModalFusionLayer to handle additional
+    modalities beyond vision and text.
+
+    Features:
+    - Support for 4 modalities: Vision, Text, Audio, Video
+    - Cross-modal attention between all modality pairs
+    - Confidence-based weighting
+    - Temporal encoding for video
+    - Cross-modal consistency validation
+    - Adaptive fusion based on available modalities
+
+    Usage:
+        # With all modalities
+        fusion = AdvancedMultiModalFusion()
+        result = fusion(
+            vision_features=vision_feats,
+            text_features=text_feats,
+            audio_features=audio_feats,
+            video_features=video_feats,
+        )
+
+        # With subset of modalities (others can be None)
+        result = fusion(
+            vision_features=vision_feats,
+            text_features=text_feats,
+        )
+    """
+
+    def __init__(
+        self,
+        vision_dim: int = 768,
+        text_dim: int = 768,
+        audio_dim: int = 768,
+        video_dim: int = 768,
+        fusion_dim: int = 768,
+        num_heads: int = 32,
+        num_layers: int = 2,
+        dropout: float = 0.1,
+    ):
+        """
+        Initialize advanced multi-modal fusion.
+
+        Args:
+            vision_dim: Vision feature dimension
+            text_dim: Text feature dimension
+            audio_dim: Audio feature dimension
+            video_dim: Video feature dimension
+            fusion_dim: Fused feature dimension
+            num_heads: Number of attention heads
+            num_layers: Number of fusion layers
+            dropout: Dropout rate
+        """
+        super().__init__()
+
+        self.fusion_dim = fusion_dim
+        self.num_heads = num_heads
+        self.num_layers = num_layers
+
+        logger.info(
+            f"Initializing AdvancedMultiModalFusion: "
+            f"fusion_dim={fusion_dim}, num_heads={num_heads}, "
+            f"num_layers={num_layers}"
+        )
+
+        # Modality encoders
+        self.vision_projection = nn.Linear(vision_dim, fusion_dim)
+        self.text_projection = nn.Linear(text_dim, fusion_dim)
+        self.audio_encoder = AudioFeatureEncoder(audio_dim, fusion_dim)
+        self.video_encoder = VideoFeatureEncoder(video_dim, fusion_dim)
+
+        # Cross-modal attention layers
+        # Vision ↔ Text
+        self.vision_text_attn = CrossAttention(fusion_dim, num_heads, dropout)
+        self.text_vision_attn = CrossAttention(fusion_dim, num_heads, dropout)
+
+        # Vision ↔ Audio
+        self.vision_audio_attn = CrossAttention(fusion_dim, num_heads, dropout)
+        self.audio_vision_attn = CrossAttention(fusion_dim, num_heads, dropout)
+
+        # Text ↔ Audio
+        self.text_audio_attn = CrossAttention(fusion_dim, num_heads, dropout)
+        self.audio_text_attn = CrossAttention(fusion_dim, num_heads, dropout)
+
+        # Video fusion (combines with vision features)
+        self.video_fusion_attn = CrossAttention(fusion_dim, num_heads, dropout)
+
+        # Consistency checkers
+        self.vision_text_consistency = CrossModalConsistencyChecker(fusion_dim)
+        self.vision_audio_consistency = CrossModalConsistencyChecker(fusion_dim)
+        self.text_audio_consistency = CrossModalConsistencyChecker(fusion_dim)
+
+        # Modality gating (confidence-based weighting)
+        self.modality_gate = nn.Sequential(
+            nn.Linear(fusion_dim * 4, fusion_dim),
+            nn.ReLU(),
+            nn.Linear(fusion_dim, 4),  # 4 modalities
+            nn.Softmax(dim=-1),
+        )
+
+        # Output projection
+        self.output_projection = nn.Linear(fusion_dim, fusion_dim)
+
+        # Normalization layers
+        self.norm_vision = nn.LayerNorm(fusion_dim)
+        self.norm_text = nn.LayerNorm(fusion_dim)
+        self.norm_audio = nn.LayerNorm(fusion_dim)
+        self.norm_video = nn.LayerNorm(fusion_dim)
+
+    def forward(
+        self,
+        vision_features: Optional[torch.Tensor] = None,
+        text_features: Optional[torch.Tensor] = None,
+        audio_features: Optional[torch.Tensor] = None,
+        video_features: Optional[torch.Tensor] = None,
+        audio_confidence: Optional[torch.Tensor] = None,
+        video_frame_indices: Optional[torch.Tensor] = None,
+    ) -> Dict[str, Any]:
+        """
+        Fuse multiple modalities.
+
+        Args:
+            vision_features: Vision features [batch_size, vision_len, vision_dim]
+            text_features: Text features [batch_size, text_len, text_dim]
+            audio_features: Audio features [batch_size, audio_len, audio_dim]
+            video_features: Video features [batch_size, num_frames, video_dim]
+            audio_confidence: Audio confidence scores [batch_size, audio_len]
+            video_frame_indices: Video frame indices [batch_size, num_frames]
+
+        Returns:
+            Dictionary containing:
+            - fused_features: Fused features
+            - modality_weights: Confidence weights for each modality
+            - consistency_scores: Cross-modal consistency scores
+            - attention_maps: Attention weight tensors
+        """
+        # Project and normalize available modalities
+        encoded_modalities = []
+        modality_names = []
+
+        if vision_features is not None:
+            vision_enc = self.norm_vision(self.vision_projection(vision_features))
+            encoded_modalities.append(vision_enc)
+            modality_names.append("vision")
+        else:
+            vision_enc = None
+
+        if text_features is not None:
+            text_enc = self.norm_text(self.text_projection(text_features))
+            encoded_modalities.append(text_enc)
+            modality_names.append("text")
+        else:
+            text_enc = None
+
+        if audio_features is not None:
+            audio_enc = self.norm_audio(
+                self.audio_encoder(audio_features, audio_confidence)
+            )
+            encoded_modalities.append(audio_enc)
+            modality_names.append("audio")
+        else:
+            audio_enc = None
+
+        if video_features is not None:
+            video_enc = self.norm_video(
+                self.video_encoder(video_features, video_frame_indices)
+            )
+            encoded_modalities.append(video_enc)
+            modality_names.append("video")
+        else:
+            video_enc = None
+
+        if not encoded_modalities:
+            raise ValueError("At least one modality must be provided")
+
+        logger.debug(f"Fusing modalities: {modality_names}")
+
+        # Cross-modal attention and consistency checking
+        attention_maps = {}
+        consistency_scores = {}
+
+        # Vision ↔ Text
+        if vision_enc is not None and text_enc is not None:
+            vision_from_text, attn_vt = self.vision_text_attn(
+                vision_enc, text_enc, text_enc
+            )
+            text_from_vision, attn_tv = self.text_vision_attn(
+                text_enc, vision_enc, vision_enc
+            )
+            vision_enc = vision_enc + vision_from_text
+            text_enc = text_enc + text_from_vision
+
+            attention_maps["vision_text"] = attn_vt
+            attention_maps["text_vision"] = attn_tv
+
+            consistency_scores["vision_text"] = self.vision_text_consistency(
+                vision_enc, text_enc
+            ).mean()
+
+        # Vision ↔ Audio
+        if vision_enc is not None and audio_enc is not None:
+            vision_from_audio, attn_va = self.vision_audio_attn(
+                vision_enc, audio_enc, audio_enc
+            )
+            audio_from_vision, attn_av = self.audio_vision_attn(
+                audio_enc, vision_enc, vision_enc
+            )
+            vision_enc = vision_enc + vision_from_audio
+            audio_enc = audio_enc + audio_from_vision
+
+            attention_maps["vision_audio"] = attn_va
+            attention_maps["audio_vision"] = attn_av
+
+            consistency_scores["vision_audio"] = self.vision_audio_consistency(
+                vision_enc, audio_enc
+            ).mean()
+
+        # Text ↔ Audio
+        if text_enc is not None and audio_enc is not None:
+            text_from_audio, attn_ta = self.text_audio_attn(
+                text_enc, audio_enc, audio_enc
+            )
+            audio_from_text, attn_at = self.audio_text_attn(
+                audio_enc, text_enc, text_enc
+            )
+            text_enc = text_enc + text_from_audio
+            audio_enc = audio_enc + audio_from_text
+
+            attention_maps["text_audio"] = attn_ta
+            attention_maps["audio_text"] = attn_at
+
+            consistency_scores["text_audio"] = self.text_audio_consistency(
+                text_enc, audio_enc
+            ).mean()
+
+        # Video fusion (merge with vision if available)
+        if video_enc is not None and vision_enc is not None:
+            vision_from_video, attn_vv = self.video_fusion_attn(
+                vision_enc, video_enc, video_enc
+            )
+            vision_enc = vision_enc + vision_from_video
+            attention_maps["vision_video"] = attn_vv
+
+        # Combine all modalities
+        # Pool each modality to same length (mean pooling)
+        pooled_modalities = []
+
+        if vision_enc is not None:
+            pooled_modalities.append(vision_enc.mean(dim=1, keepdim=True))
+        if text_enc is not None:
+            pooled_modalities.append(text_enc.mean(dim=1, keepdim=True))
+        if audio_enc is not None:
+            pooled_modalities.append(audio_enc.mean(dim=1, keepdim=True))
+        if video_enc is not None:
+            pooled_modalities.append(video_enc.mean(dim=1, keepdim=True))
+
+        # Pad to 4 modalities (with zeros for missing ones)
+        while len(pooled_modalities) < 4:
+            pooled_modalities.append(
+                torch.zeros_like(pooled_modalities[0])
+            )
+
+        # Compute modality weights
+        concat_pooled = torch.cat(pooled_modalities, dim=-1)
+        modality_weights = self.modality_gate(concat_pooled)  # [batch_size, 1, 4]
+
+        # Weighted combination
+        weighted_features = []
+        modality_idx = 0
+
+        for i, (modality, name) in enumerate([
+            (vision_enc, "vision"),
+            (text_enc, "text"),
+            (audio_enc, "audio"),
+            (video_enc, "video")
+        ]):
+            if modality is not None:
+                weight = modality_weights[:, :, i:i+1]
+                weighted_features.append(modality * weight)
+
+        # Concatenate weighted features
+        if weighted_features:
+            fused_features = torch.cat(weighted_features, dim=1)
+        else:
+            fused_features = encoded_modalities[0]
+
+        # Output projection
+        fused_features = self.output_projection(fused_features)
+
+        return {
+            "fused_features": fused_features,
+            "vision_features": vision_enc,
+            "text_features": text_enc,
+            "audio_features": audio_enc,
+            "video_features": video_enc,
+            "modality_weights": modality_weights,
+            "consistency_scores": consistency_scores,
+            "attention_maps": attention_maps,
+            "modality_names": modality_names,
+        }

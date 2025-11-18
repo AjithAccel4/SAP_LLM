@@ -84,3 +84,21 @@ faiss-cpu==1.7.4
 
 # ONNX Runtime (CPU version - use onnxruntime-gpu==1.16.3 for GPU)
 onnxruntime==1.16.3
+
+# Video processing
+scenedetect==0.6.3
+opencv-contrib-python==4.8.1.78
+moviepy==1.0.3
+
+# Audio processing
+openai-whisper==20231117
+librosa==0.10.1
+soundfile==0.12.1
+pydub==0.25.1
+
+# Advanced table extraction
+timm==0.9.12  # For TableTransformer models
+detectron2 @ git+https://github.com/facebookresearch/detectron2.git@main  # For table detection
+
+# Speaker diarization
+pyannote.audio==3.1.1
