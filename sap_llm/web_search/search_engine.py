@@ -67,10 +67,14 @@ class WebSearchEngine:
         self.enabled = self.config.get("enabled", True)
         self.offline_mode = self.config.get("offline_mode", False)
 
-        # Initialize cache manager
+        # Initialize cache manager (3-tier: memory, Redis, disk)
+        cache_config = self.config.get("cache", {})
         self.cache_manager = SearchCacheManager(
-            redis_config=self.config.get("cache", {}),
-            enabled=self.config.get("cache_enabled", True)
+            redis_config=cache_config,
+            enabled=self.config.get("cache_enabled", True),
+            disk_cache_dir=cache_config.get("disk_cache_dir"),
+            max_disk_cache_size_mb=cache_config.get("max_disk_cache_size_mb", 1000),
+            default_ttl=cache_config.get("ttl", 86400)
         )
 
         # Initialize rate limiters (per provider)
@@ -540,8 +544,104 @@ class WebSearchEngine:
         key_data = f"{query}:{num_results}:{mode.value}:{filters}"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
+    def health_check(self) -> Dict[str, Any]:
+        """
+        Comprehensive health check of all providers and components.
+
+        Returns:
+            Health status for all components
+        """
+        health = {
+            "overall_healthy": True,
+            "timestamp": time.time(),
+            "providers": {},
+            "cache": {},
+            "rate_limiters": {}
+        }
+
+        # Check each provider
+        for provider_name, provider in self.providers.items():
+            provider_health = {
+                "available": True,
+                "failure_count": self.stats["provider_failures"].get(provider_name, 0),
+                "latency_ms": None
+            }
+
+            try:
+                # Simple test search
+                start = time.time()
+                results = provider.search("test", num_results=1, timeout=5.0)
+                provider_health["latency_ms"] = (time.time() - start) * 1000
+                provider_health["healthy"] = len(results) >= 0
+            except Exception as e:
+                provider_health["healthy"] = False
+                provider_health["error"] = str(e)
+                health["overall_healthy"] = False
+
+            health["providers"][provider_name] = provider_health
+
+        # Check cache health
+        health["cache"] = self.cache_manager.health_check()
+        if not health["cache"].get("healthy"):
+            logger.warning("Cache unhealthy, but not critical")
+
+        # Check rate limiters
+        for name, limiter in self.rate_limiters.items():
+            health["rate_limiters"][name] = limiter.get_stats()
+
+        return health
+
+    def get_provider_status(self) -> Dict[str, Any]:
+        """
+        Get detailed status of all search providers with automatic failover capability assessment.
+
+        Returns:
+            Provider status including availability, performance metrics, and failover readiness
+        """
+        status = {
+            "total_providers": len(self.providers),
+            "available_providers": 0,
+            "failover_ready": False,
+            "providers": {}
+        }
+
+        for provider_name in self.provider_priority:
+            if provider_name not in self.providers:
+                status["providers"][provider_name] = {
+                    "configured": False,
+                    "available": False,
+                    "reason": "Not configured"
+                }
+                continue
+
+            provider_status = {
+                "configured": True,
+                "available": True,
+                "priority": self.provider_priority.index(provider_name),
+                "failures": self.stats["provider_failures"].get(provider_name, 0),
+                "rate_limited": False
+            }
+
+            # Check rate limit status
+            rate_limiter = self.rate_limiters.get(provider_name)
+            if rate_limiter:
+                if not rate_limiter.can_proceed():
+                    provider_status["rate_limited"] = True
+                    provider_status["available"] = False
+                provider_status["rate_limit_stats"] = rate_limiter.get_stats()
+
+            status["providers"][provider_name] = provider_status
+
+            if provider_status["available"]:
+                status["available_providers"] += 1
+
+        # Failover is ready if we have at least 2 available providers
+        status["failover_ready"] = status["available_providers"] >= 2
+
+        return status
+
     def get_statistics(self) -> Dict[str, Any]:
-        """Get search engine statistics."""
+        """Get comprehensive search engine statistics."""
         return {
             **self.stats,
             "cache_hit_rate": (
@@ -549,7 +649,8 @@ class WebSearchEngine:
                 if self.stats["total_searches"] > 0 else 0.0
             ),
             "providers_available": list(self.providers.keys()),
-            "cache_stats": self.cache_manager.get_stats()
+            "cache_stats": self.cache_manager.get_stats(),
+            "provider_status": self.get_provider_status()
         }
 
     def clear_cache(self) -> None:
