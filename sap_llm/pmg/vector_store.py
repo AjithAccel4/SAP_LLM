@@ -30,9 +30,9 @@ class PMGVectorStore:
 
     def __init__(
         self,
-        embedding_model: str = "all-MiniLM-L6-v2",
-        dimension: int = 384,
-        index_type: str = "IndexFlatL2",
+        embedding_model: str = "sentence-transformers/all-mpnet-base-v2",
+        dimension: int = 768,
+        index_type: str = "IndexHNSWFlat",
         storage_path: Optional[str] = None,
     ):
         """
@@ -77,9 +77,20 @@ class PMGVectorStore:
             # Inverted file index (faster but approximate)
             quantizer = faiss.IndexFlatL2(self.dimension)
             return faiss.IndexIVFFlat(quantizer, self.dimension, 100)
+        elif self.index_type == "IndexHNSWFlat":
+            # HNSW (Hierarchical Navigable Small World) for fast approximate search
+            # M = 32 (number of connections per layer)
+            # ef_construction = 200 (size of dynamic candidate list for construction)
+            index = faiss.IndexHNSWFlat(self.dimension, 32)
+            index.hnsw.efConstruction = 200
+            index.hnsw.efSearch = 64  # For <100ms queries
+            return index
         else:
-            logger.warning(f"Unknown index type: {self.index_type}, using IndexFlatL2")
-            return faiss.IndexFlatL2(self.dimension)
+            logger.warning(f"Unknown index type: {self.index_type}, using IndexHNSWFlat")
+            index = faiss.IndexHNSWFlat(self.dimension, 32)
+            index.hnsw.efConstruction = 200
+            index.hnsw.efSearch = 64
+            return index
 
     def add_document(
         self,

@@ -11,6 +11,8 @@ Used to enhance SAP_LLM predictions with historical patterns.
 """
 
 import logging
+import hashlib
+import json
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
@@ -22,6 +24,14 @@ from .vector_store import PMGVectorStore
 from .embedding_generator import EnhancedEmbeddingGenerator, EmbeddingConfig
 
 logger = logging.getLogger(__name__)
+
+# Try importing Redis
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    logger.warning("Redis not available. Install with: pip install redis")
 
 
 @dataclass
@@ -35,6 +45,11 @@ class RetrievalConfig:
     include_successes: bool = True
     weight_by_recency: bool = True
     recency_decay_days: int = 30
+    enable_cache: bool = True
+    cache_ttl_seconds: int = 3600  # 1 hour
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
 
 
 @dataclass
@@ -84,12 +99,30 @@ class ContextRetriever:
         self.embedding_gen = embedding_generator or EnhancedEmbeddingGenerator()
         self.config = config or RetrievalConfig()
 
+        # Initialize Redis cache if enabled and available
+        self.redis_client = None
+        if self.config.enable_cache and REDIS_AVAILABLE:
+            try:
+                self.redis_client = redis.Redis(
+                    host=self.config.redis_host,
+                    port=self.config.redis_port,
+                    db=self.config.redis_db,
+                    decode_responses=False  # We'll handle encoding
+                )
+                # Test connection
+                self.redis_client.ping()
+                logger.info(f"Redis cache connected: {self.config.redis_host}:{self.config.redis_port}")
+            except Exception as e:
+                logger.warning(f"Failed to connect to Redis: {e}. Running without cache.")
+                self.redis_client = None
+
         # Statistics
         self.stats = {
             "total_retrievals": 0,
             "avg_similarity": 0.0,
             "avg_results_per_query": 0.0,
-            "cache_hits": 0
+            "cache_hits": 0,
+            "cache_misses": 0
         }
 
         logger.info("ContextRetriever initialized")
@@ -115,6 +148,17 @@ class ContextRetriever:
         min_similarity = min_similarity or self.config.min_similarity
 
         logger.debug(f"Retrieving context (top_k={top_k}, min_sim={min_similarity})")
+
+        # Check cache first
+        cache_key = self._generate_cache_key(document, top_k, min_similarity)
+        cached_result = self._get_from_cache(cache_key)
+
+        if cached_result is not None:
+            self.stats["cache_hits"] += 1
+            logger.debug("Cache hit for context retrieval")
+            return cached_result
+
+        self.stats["cache_misses"] += 1
 
         # Step 1: Generate embedding for input document
         query_embedding = self.embedding_gen.generate_document_embedding(document)
@@ -152,6 +196,9 @@ class ContextRetriever:
 
         # Update statistics
         self._update_stats(contexts)
+
+        # Cache result
+        self._save_to_cache(cache_key, contexts[:top_k])
 
         logger.info(f"Retrieved {len(contexts)} context results")
 
@@ -493,9 +540,135 @@ class ContextRetriever:
                 / self.stats["total_retrievals"]
             )
 
+    def _generate_cache_key(
+        self,
+        document: Dict[str, Any],
+        top_k: int,
+        min_similarity: float
+    ) -> str:
+        """
+        Generate cache key for document retrieval.
+
+        Args:
+            document: Document dictionary
+            top_k: Number of results
+            min_similarity: Minimum similarity
+
+        Returns:
+            Cache key string
+        """
+        # Create a normalized representation of the document
+        key_parts = [
+            document.get('doc_type', ''),
+            document.get('supplier_id', ''),
+            document.get('company_code', ''),
+            str(document.get('total_amount', 0)),
+            str(top_k),
+            str(min_similarity)
+        ]
+
+        # Hash to create compact key
+        key_str = '|'.join(key_parts)
+        key_hash = hashlib.md5(key_str.encode()).hexdigest()
+
+        return f"pmg:context:{key_hash}"
+
+    def _get_from_cache(self, cache_key: str) -> Optional[List[ContextResult]]:
+        """
+        Get results from Redis cache.
+
+        Args:
+            cache_key: Cache key
+
+        Returns:
+            Cached results or None
+        """
+        if not self.redis_client:
+            return None
+
+        try:
+            cached_data = self.redis_client.get(cache_key)
+
+            if cached_data:
+                # Deserialize
+                data = json.loads(cached_data.decode('utf-8'))
+
+                # Convert back to ContextResult objects
+                results = []
+                for item in data:
+                    result = ContextResult(
+                        doc_id=item['doc_id'],
+                        document=item['document'],
+                        similarity=item['similarity'],
+                        routing_decision=item.get('routing_decision'),
+                        sap_response=item.get('sap_response'),
+                        exceptions=item.get('exceptions', []),
+                        success=item['success'],
+                        timestamp=item['timestamp'],
+                        recency_weight=item['recency_weight']
+                    )
+                    results.append(result)
+
+                return results
+
+        except Exception as e:
+            logger.warning(f"Cache get failed: {e}")
+
+        return None
+
+    def _save_to_cache(self, cache_key: str, results: List[ContextResult]) -> None:
+        """
+        Save results to Redis cache.
+
+        Args:
+            cache_key: Cache key
+            results: Results to cache
+        """
+        if not self.redis_client:
+            return
+
+        try:
+            # Serialize ContextResults
+            data = [asdict(r) for r in results]
+
+            # Save to Redis with TTL
+            self.redis_client.setex(
+                cache_key,
+                self.config.cache_ttl_seconds,
+                json.dumps(data).encode('utf-8')
+            )
+
+        except Exception as e:
+            logger.warning(f"Cache save failed: {e}")
+
+    def clear_cache(self) -> None:
+        """Clear all cached results."""
+        if not self.redis_client:
+            logger.warning("No Redis client available")
+            return
+
+        try:
+            # Delete all keys matching pattern
+            for key in self.redis_client.scan_iter("pmg:context:*"):
+                self.redis_client.delete(key)
+
+            logger.info("Cache cleared")
+
+        except Exception as e:
+            logger.error(f"Failed to clear cache: {e}")
+
     def get_statistics(self) -> Dict[str, Any]:
         """Get retrieval statistics."""
-        return self.stats.copy()
+        stats = self.stats.copy()
+
+        # Add cache hit rate
+        total_requests = stats['cache_hits'] + stats['cache_misses']
+        if total_requests > 0:
+            stats['cache_hit_rate'] = stats['cache_hits'] / total_requests
+        else:
+            stats['cache_hit_rate'] = 0.0
+
+        return stats
 
     def export_contexts(
         self,
