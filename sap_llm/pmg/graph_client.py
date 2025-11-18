@@ -15,6 +15,8 @@ from gremlin_python.driver import client, serializer
 from gremlin_python.driver.protocol import GremlinServerError
 
 from sap_llm.utils.logger import get_logger
+from .merkle_versioning import MerkleVersioning
+from .embedding_generator import EnhancedEmbeddingGenerator
 
 logger = get_logger(__name__)
 
@@ -58,6 +60,12 @@ class ProcessMemoryGraph:
         else:
             self.mock_mode = False
             self._init_client()
+
+        # Initialize Merkle versioning for audit trail
+        self.versioning = MerkleVersioning()
+
+        # Initialize embedding generator for 768-dim embeddings
+        self.embedding_gen = EnhancedEmbeddingGenerator()
 
         logger.info(f"PMG initialized (mock_mode={self.mock_mode})")
 
@@ -137,7 +145,18 @@ class ProcessMemoryGraph:
             return doc_id
 
     def _create_document_vertex(self, doc_id: str, document: Dict[str, Any]):
-        """Create document vertex."""
+        """Create document vertex with embedding and Merkle hash."""
+        # Generate 768-dim embedding
+        embedding = self.embedding_gen.generate_document_embedding(document)
+        embedding_list = embedding.tolist()
+
+        # Create Merkle version for audit trail
+        version = self.versioning.create_version(
+            doc_id=doc_id,
+            document=document,
+            change_summary="Document stored in PMG"
+        )
+
         query = f"""
         g.addV('Document')
           .property('id', '{doc_id}')
@@ -148,7 +167,10 @@ class ProcessMemoryGraph:
           .property('total_amount', {document.get('total_amount', 0)})
           .property('currency', '{document.get('currency', 'USD')}')
           .property('ingestion_timestamp', '{datetime.now().isoformat()}')
+          .property('merkle_hash', '{version.version_hash}')
+          .property('version', {version.version_number})
           .property('adc_json', '{self._escape_json(document)}')
+          .property('embedding', {json.dumps(embedding_list)})
         """
         self._execute_query(query)
 
@@ -498,6 +520,165 @@ class ProcessMemoryGraph:
     def _escape_string(self, s: str) -> str:
         """Escape string for Gremlin query."""
         return s.replace("'", "\\'").replace('"', '\\"').replace("\n", " ")
+
+    def query_documents_at_time(
+        self,
+        as_of_timestamp: str,
+        doc_type: Optional[str] = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Query documents as of specific timestamp (temporal query).
+
+        Args:
+            as_of_timestamp: ISO format timestamp
+            doc_type: Optional document type filter
+            limit: Maximum results
+
+        Returns:
+            List of documents as they existed at that time
+        """
+        if self.mock_mode:
+            logger.debug(f"[MOCK] Querying documents as of {as_of_timestamp}")
+            return []
+
+        try:
+            query = f"""
+            g.V().hasLabel('Document')
+              .has('ingestion_timestamp', lt('{as_of_timestamp}'))
+            """
+
+            if doc_type:
+                query += f".has('doc_type', '{doc_type}')"
+
+            query += f".limit({limit}).valueMap()"
+
+            results = self._execute_query(query)
+            return [self._parse_vertex(r) for r in results]
+
+        except Exception as e:
+            logger.error(f"Failed to query documents at time: {e}")
+            return []
+
+    def find_similar_by_embedding(
+        self,
+        query_embedding: List[float],
+        top_k: int = 10,
+        min_similarity: float = 0.85,
+        doc_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Find similar documents using vector similarity search.
+
+        Note: This is a basic implementation. For production with 100K+ documents,
+        use the PMGVectorStore with HNSW index for <100ms queries.
+
+        Args:
+            query_embedding: 768-dim query embedding
+            top_k: Number of results
+            min_similarity: Minimum cosine similarity (0-1)
+            doc_type: Optional document type filter
+
+        Returns:
+            List of similar documents with similarity scores
+        """
+        if self.mock_mode:
+            logger.debug("[MOCK] Finding similar documents by embedding")
+            return []
+
+        try:
+            # Fetch all documents (for small datasets)
+            # For 100K+ documents, use external vector store
+            query = "g.V().hasLabel('Document')"
+
+            if doc_type:
+                query += f".has('doc_type', '{doc_type}')"
+
+            query += ".has('embedding').valueMap()"
+
+            results = self._execute_query(query)
+
+            # Compute similarities
+            similar_docs = []
+
+            for result in results:
+                doc = self._parse_vertex(result)
+
+                if 'embedding' not in doc:
+                    continue
+
+                # Parse embedding
+                try:
+                    doc_embedding = json.loads(doc['embedding']) if isinstance(doc['embedding'], str) else doc['embedding']
+
+                    # Compute cosine similarity
+                    similarity = self._cosine_similarity(query_embedding, doc_embedding)
+
+                    if similarity >= min_similarity:
+                        doc['similarity'] = similarity
+                        similar_docs.append(doc)
+
+                except Exception as e:
+                    logger.warning(f"Failed to compute similarity for doc: {e}")
+                    continue
+
+            # Sort by similarity descending
+            similar_docs.sort(key=lambda x: x['similarity'], reverse=True)
+
+            return similar_docs[:top_k]
+
+        except Exception as e:
+            logger.error(f"Failed to find similar documents: {e}")
+            return []
+
+    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+        """Compute cosine similarity between two vectors."""
+        import numpy as np
+
+        v1 = np.array(vec1)
+        v2 = np.array(vec2)
+
+        dot_product = np.dot(v1, v2)
+        norm1 = np.linalg.norm(v1)
+        norm2 = np.linalg.norm(v2)
+
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+
+        return float(dot_product / (norm1 * norm2))
+
+    def get_pmg_statistics(self) -> Dict[str, Any]:
+        """
+        Get PMG statistics for monitoring.
+
+        Returns:
+            Statistics dictionary
+        """
+        if self.mock_mode:
+            return {
+                "mode": "mock",
+                "total_documents": 0,
+                "total_versions": 0
+            }
+
+        try:
+            # Count vertices by type
+            counts = {}
+
+            for vertex_type in ['Document', 'RoutingDecision', 'SAPResponse', 'Exception']:
+                query = f"g.V().hasLabel('{vertex_type}').count()"
+                result = self._execute_query(query)
+                counts[f"total_{vertex_type.lower()}s"] = result[0] if result else 0
+
+            # Add versioning stats
+            version_stats = self.versioning.get_storage_stats()
+            counts.update(version_stats)
+
+            return counts
+
+        except Exception as e:
+            logger.error(f"Failed to get PMG statistics: {e}")
+            return {"error": str(e)}
 
     def close(self):
         """Close client connection."""
