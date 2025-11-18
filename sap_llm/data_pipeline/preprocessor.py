@@ -27,6 +27,7 @@ try:
     SPARK_AVAILABLE = True
 except ImportError:
     SPARK_AVAILABLE = False
+    DataFrame = Any  # Type stub when pyspark not available
     logger.warning("PySpark not available. Install with: pip install pyspark")
 
 
