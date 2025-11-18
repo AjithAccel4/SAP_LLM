@@ -110,7 +110,7 @@ jobs:
           output-file: sbom.spdx.json
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sbom
           path: sbom.spdx.json
@@ -317,7 +317,7 @@ jobs:
           echo "kubectl get deployment sap-llm-prod -n sap-llm-prod -o yaml > backup-deployment.yaml"
 
       - name: Upload deployment backup
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: production-backup-${{ github.sha }}
           path: backup-deployment.yaml
