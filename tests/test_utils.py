@@ -5,8 +5,8 @@ Unit tests for utility modules.
 import pytest
 import time
 
-from sap_llm.utils.hash import hash_file, hash_string
-from sap_llm.utils.timer import Timer, timed
+from sap_llm.utils.hash import compute_file_hash, compute_hash
+from sap_llm.utils.timer import Timer, timer
 from sap_llm.utils.logger import get_logger
 
 
@@ -17,27 +17,26 @@ class TestHash:
     def test_hash_string_sha256(self):
         """Test SHA256 string hashing."""
         text = "Hello, World!"
-        hash_result = hash_string(text, algorithm="sha256")
+        hash_result = compute_hash(text, algorithm="sha256")
 
         assert isinstance(hash_result, str)
         assert len(hash_result) == 64  # SHA256 produces 64 hex characters
 
         # Test consistency
-        hash_result2 = hash_string(text, algorithm="sha256")
+        hash_result2 = compute_hash(text, algorithm="sha256")
         assert hash_result == hash_result2
 
     def test_hash_string_md5(self):
-        """Test MD5 string hashing."""
+        """Test MD5 string hashing (should reject insecure algorithm)."""
         text = "Hello, World!"
-        hash_result = hash_string(text, algorithm="md5")
-
-        assert isinstance(hash_result, str)
-        assert len(hash_result) == 32  # MD5 produces 32 hex characters
+        # MD5 is insecure and should raise ValueError
+        with pytest.raises(ValueError, match="Insecure hash algorithm"):
+            compute_hash(text, algorithm="md5")
 
     def test_hash_different_strings(self):
         """Test that different strings produce different hashes."""
-        hash1 = hash_string("string1")
-        hash2 = hash_string("string2")
+        hash1 = compute_hash("string1")
+        hash2 = compute_hash("string2")
 
         assert hash1 != hash2
 
@@ -48,19 +47,19 @@ class TestHash:
         test_file.write_text("Test content")
 
         # Hash file
-        hash_result = hash_file(str(test_file))
+        hash_result = compute_file_hash(str(test_file))
 
         assert isinstance(hash_result, str)
         assert len(hash_result) == 64
 
         # Test consistency
-        hash_result2 = hash_file(str(test_file))
+        hash_result2 = compute_file_hash(str(test_file))
         assert hash_result == hash_result2
 
     def test_hash_nonexistent_file(self):
         """Test hashing nonexistent file raises error."""
         with pytest.raises(FileNotFoundError):
-            hash_file("/nonexistent/file.txt")
+            compute_file_hash("/nonexistent/file.txt")
 
 
 @pytest.mark.unit
@@ -76,8 +75,8 @@ class TestTimer:
         assert timer.elapsed < 0.2  # Allow some tolerance
 
     def test_timer_decorator(self):
-        """Test timed decorator."""
-        @timed
+        """Test timer decorator."""
+        @timer
         def slow_function():
             time.sleep(0.1)
             return "result"
@@ -88,19 +87,19 @@ class TestTimer:
 
     def test_timer_start_stop(self):
         """Test manual timer start/stop."""
-        timer = Timer()
-        timer.start()
+        t = Timer()
+        t.start()
         time.sleep(0.1)
-        elapsed = timer.stop()
+        elapsed = t.stop()
 
         assert elapsed >= 0.1
-        assert timer.elapsed >= 0.1
+        assert t.elapsed >= 0.1
 
     def test_timer_without_start(self):
         """Test timer.stop() without start raises error."""
-        timer = Timer()
+        t = Timer()
         with pytest.raises(RuntimeError):
-            timer.stop()
+            t.stop()
 
 
 @pytest.mark.unit

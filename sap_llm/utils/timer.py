@@ -49,6 +49,27 @@ class Timer:
         self.elapsed = self.end_time - self.start_time
         self.logger.info(f"{self.name} took {self.elapsed:.4f}s")
 
+    def start(self) -> None:
+        """Start the timer manually."""
+        self.start_time = time.perf_counter()
+
+    def stop(self) -> float:
+        """
+        Stop the timer manually and return elapsed time.
+
+        Returns:
+            Elapsed time in seconds
+
+        Raises:
+            RuntimeError: If timer was not started
+        """
+        if self.start_time is None:
+            raise RuntimeError("Timer not started. Call start() first.")
+
+        self.end_time = time.perf_counter()
+        self.elapsed = self.end_time - self.start_time
+        return self.elapsed
+
     def __str__(self) -> str:
         """String representation."""
         if self.elapsed is not None:
