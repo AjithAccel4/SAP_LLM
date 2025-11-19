@@ -13,15 +13,21 @@ from typing import Any, Dict, List, Optional, Union
 
 from sap_llm.utils.logger import get_logger
 from sap_llm.web_search.cache_manager import SearchCacheManager
+from sap_llm.web_search.knowledge_extractor import KnowledgeExtractor
+from sap_llm.web_search.query_analyzer import QueryAnalyzer
 from sap_llm.web_search.rate_limiter import RateLimiter
 from sap_llm.web_search.result_processor import ResultProcessor
+from sap_llm.web_search.sap_validator import SAPSourceValidator
 from sap_llm.web_search.search_providers import (
     BingSearchProvider,
+    BraveSearchProvider,
     DuckDuckGoProvider,
     GoogleSearchProvider,
     SearchProvider,
+    SerpAPIProvider,
     TavilySearchProvider,
 )
+from sap_llm.web_search.semantic_ranker import SemanticRanker
 
 logger = get_logger(__name__)
 
@@ -80,6 +86,14 @@ class WebSearchEngine:
         # Initialize rate limiters (per provider)
         rate_limit_config = self.config.get("rate_limits", {})
         self.rate_limiters = {
+            "serpapi": RateLimiter(
+                requests_per_minute=rate_limit_config.get("serpapi", 100),
+                requests_per_day=rate_limit_config.get("serpapi_daily", 10000)
+            ),
+            "brave": RateLimiter(
+                requests_per_minute=rate_limit_config.get("brave", 60),
+                requests_per_day=rate_limit_config.get("brave_daily", 2000)
+            ),
             "google": RateLimiter(
                 requests_per_minute=rate_limit_config.get("google", 100),
                 requests_per_day=rate_limit_config.get("google_daily", 10000)
@@ -109,10 +123,36 @@ class WebSearchEngine:
             min_relevance_score=self.config.get("min_relevance_score", 0.5)
         )
 
+        # Initialize semantic ranker
+        semantic_config = self.config.get("semantic_ranking", {})
+        self.semantic_ranker = SemanticRanker(
+            model_name=semantic_config.get("model_name", "all-MiniLM-L6-v2"),
+            use_gpu=semantic_config.get("use_gpu", False),
+            batch_size=semantic_config.get("batch_size", 32)
+        )
+
+        # Initialize query analyzer
+        self.query_analyzer = QueryAnalyzer()
+
+        # Initialize SAP validator
+        validator_config = self.config.get("sap_validator", {})
+        self.sap_validator = SAPSourceValidator(
+            min_trust_score=validator_config.get("min_trust_score", 0.5),
+            freshness_weight=validator_config.get("freshness_weight", 0.1),
+            require_https=validator_config.get("require_https", True)
+        )
+
+        # Initialize knowledge extractor
+        extractor_config = self.config.get("knowledge_extractor", {})
+        self.knowledge_extractor = KnowledgeExtractor(
+            fetch_full_content=extractor_config.get("fetch_full_content", False),
+            max_content_length=extractor_config.get("max_content_length", 10000)
+        )
+
         # Provider priority order
         self.provider_priority = self.config.get(
             "provider_priority",
-            ["tavily", "google", "bing", "duckduckgo"]
+            ["serpapi", "brave", "tavily", "google", "bing", "duckduckgo"]
         )
 
         # Statistics
@@ -132,6 +172,26 @@ class WebSearchEngine:
     def _initialize_providers(self) -> None:
         """Initialize all configured search providers."""
         provider_config = self.config.get("providers", {})
+
+        # SerpAPI (Google Search via API)
+        if provider_config.get("serpapi", {}).get("enabled", False):
+            try:
+                api_key = provider_config["serpapi"].get("api_key")
+                if api_key:
+                    self.providers["serpapi"] = SerpAPIProvider(api_key=api_key)
+                    logger.info("SerpAPI provider initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize SerpAPI: {e}")
+
+        # Brave Search
+        if provider_config.get("brave", {}).get("enabled", False):
+            try:
+                api_key = provider_config["brave"].get("api_key")
+                if api_key:
+                    self.providers["brave"] = BraveSearchProvider(api_key=api_key)
+                    logger.info("Brave Search provider initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Brave Search: {e}")
 
         # Google Search
         if provider_config.get("google", {}).get("enabled", False):
@@ -182,10 +242,13 @@ class WebSearchEngine:
         mode: SearchMode = SearchMode.WEB,
         filters: Optional[Dict[str, Any]] = None,
         use_cache: bool = True,
-        timeout: float = 10.0
+        timeout: float = 10.0,
+        context: Optional[Dict[str, Any]] = None,
+        use_semantic_ranking: bool = True,
+        use_sap_validation: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        Perform web search with automatic provider failover.
+        Perform intelligent web search with multi-provider fallback and semantic ranking.
 
         Args:
             query: Search query string
@@ -194,14 +257,20 @@ class WebSearchEngine:
             filters: Additional filters (date range, domain, etc.)
             use_cache: Whether to use cached results
             timeout: Search timeout in seconds
+            context: Optional context for query refinement and semantic ranking
+            use_semantic_ranking: Whether to apply semantic ranking
+            use_sap_validation: Whether to apply SAP source validation
 
         Returns:
-            List of search results with metadata
+            List of search results with metadata, trust scores, and semantic scores
 
         Example:
-            >>> results = engine.search("SAP BAPI vendor master data")
+            >>> results = engine.search(
+            ...     "SAP BAPI vendor master data",
+            ...     context={"document_type": "invoice"}
+            ... )
             >>> for result in results:
-            ...     print(result["title"], result["url"])
+            ...     print(result["title"], result["trust_score"], result["semantic_score"])
         """
         if not self.enabled:
             logger.warning("Web search is disabled")
@@ -213,8 +282,17 @@ class WebSearchEngine:
 
         start_time = time.time()
         self.stats["total_searches"] += 1
+        context = context or {}
 
-        # Generate cache key
+        # Phase 1: Query Analysis and Refinement
+        refined_queries = self.query_analyzer.refine_query(query, context)
+        logger.info(f"Query refined into {len(refined_queries)} variations")
+
+        # Update filters with query analyzer suggestions
+        if not filters:
+            filters = self.query_analyzer.get_search_filters(query, context)
+
+        # Generate cache key (using original query for caching)
         cache_key = self._generate_cache_key(query, num_results, mode, filters)
 
         # Check cache
@@ -227,62 +305,107 @@ class WebSearchEngine:
 
         self.stats["cache_misses"] += 1
 
-        # Try providers in priority order
-        results = []
+        # Phase 2: Multi-Provider Search with Fallback
+        all_results = []
         last_error = None
 
-        for provider_name in self.provider_priority:
-            if provider_name not in self.providers:
-                continue
+        # Try each refined query (prioritize first query)
+        for i, refined_query in enumerate(refined_queries):
+            if len(all_results) >= num_results:
+                break
 
-            provider = self.providers[provider_name]
-            rate_limiter = self.rate_limiters.get(provider_name)
+            # Try providers in priority order for this query
+            for provider_name in self.provider_priority:
+                if provider_name not in self.providers:
+                    continue
 
-            # Check rate limit
-            if rate_limiter and not rate_limiter.can_proceed():
-                logger.warning(f"Rate limit exceeded for {provider_name}, trying next provider")
-                continue
+                provider = self.providers[provider_name]
+                rate_limiter = self.rate_limiters.get(provider_name)
 
-            try:
-                logger.info(f"Searching with provider: {provider_name}")
+                # Check rate limit
+                if rate_limiter and not rate_limiter.can_proceed():
+                    logger.warning(f"Rate limit exceeded for {provider_name}, trying next provider")
+                    continue
 
-                # Perform search
-                results = provider.search(
-                    query=query,
-                    num_results=num_results,
-                    mode=mode.value,
-                    filters=filters,
-                    timeout=timeout
-                )
+                try:
+                    logger.info(f"Searching with provider: {provider_name}, query variation {i+1}")
 
-                # Record rate limit usage
-                if rate_limiter:
-                    rate_limiter.record_request()
+                    # Perform search
+                    results = provider.search(
+                        query=refined_query,
+                        num_results=num_results,
+                        mode=mode.value,
+                        filters=filters,
+                        timeout=timeout
+                    )
 
-                # Process and validate results
-                results = self.result_processor.process_results(
-                    results=results,
-                    query=query
-                )
+                    # Record rate limit usage
+                    if rate_limiter:
+                        rate_limiter.record_request()
 
-                if results:
-                    logger.info(f"Got {len(results)} results from {provider_name}")
-                    break
+                    # Process and validate results
+                    results = self.result_processor.process_results(
+                        results=results,
+                        query=refined_query
+                    )
 
-            except Exception as e:
-                last_error = e
-                logger.warning(f"Provider {provider_name} failed: {e}")
+                    if results:
+                        all_results.extend(results)
+                        logger.info(f"Got {len(results)} results from {provider_name}")
+                        break  # Success, move to next query variation
 
-                # Track failures
-                if provider_name not in self.stats["provider_failures"]:
-                    self.stats["provider_failures"][provider_name] = 0
-                self.stats["provider_failures"][provider_name] += 1
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"Provider {provider_name} failed: {e}")
 
-                continue
+                    # Track failures
+                    if provider_name not in self.stats["provider_failures"]:
+                        self.stats["provider_failures"][provider_name] = 0
+                    self.stats["provider_failures"][provider_name] += 1
+
+                    continue
+
+            # Only use first query variation if we got good results
+            if len(all_results) >= num_results // 2:
+                break
+
+        # Phase 3: Deduplication
+        all_results = self.result_processor._deduplicate(all_results)
+
+        # Phase 4: SAP Source Validation
+        if use_sap_validation:
+            all_results = self.sap_validator.validate_results(
+                all_results,
+                require_sap_domain=context.get("require_sap_domain", False)
+            )
+            logger.info(f"SAP validation: {len(all_results)} results passed")
+
+        # Phase 5: Semantic Ranking
+        if use_semantic_ranking and self.semantic_ranker.is_available():
+            context_str = context.get("context_description") if context else None
+            all_results = self.semantic_ranker.rank_results(
+                query=query,
+                results=all_results,
+                context=context_str,
+                top_k=num_results * 2  # Get extra for better selection
+            )
+            logger.info("Applied semantic ranking")
+
+            # Remove semantic duplicates
+            all_results = self.semantic_ranker.remove_semantic_duplicates(
+                all_results,
+                threshold=0.90
+            )
+
+        # Phase 6: Final Ranking (combine all scores)
+        all_results = self._combine_ranking_scores(all_results)
+
+        # Limit to requested number
+        final_results = all_results[:num_results]
 
         # Cache results if successful
-        if results and use_cache:
-            self.cache_manager.set(cache_key, results)
+        if final_results and use_cache:
+            self.cache_manager.set(cache_key, final_results)
 
         # Update statistics
         elapsed_time = (time.time() - start_time) * 1000
@@ -290,8 +413,50 @@ class WebSearchEngine:
         avg = self.stats["avg_response_time_ms"]
         self.stats["avg_response_time_ms"] = (avg * (total - 1) + elapsed_time) / total
 
-        if not results and last_error:
+        if not final_results and last_error:
             logger.error(f"All providers failed. Last error: {last_error}")
+
+        logger.info(
+            f"Search completed in {elapsed_time:.0f}ms: "
+            f"{len(final_results)} results (avg trust: "
+            f"{sum(r.get('trust_score', 0) for r in final_results) / max(len(final_results), 1):.2f})"
+        )
+
+        return final_results
+
+    def _combine_ranking_scores(
+        self,
+        results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Combine multiple ranking scores into final score.
+
+        Args:
+            results: Search results with various scores
+
+        Returns:
+            Results sorted by combined score
+        """
+        for result in results:
+            # Weighted combination of scores
+            relevance = result.get("relevance_score", 0.5)
+            trust = result.get("trust_score", 0.5)
+            semantic = result.get("semantic_score", 0.5)
+
+            # Weights: semantic (40%), trust (35%), relevance (25%)
+            combined_score = (
+                semantic * 0.40 +
+                trust * 0.35 +
+                relevance * 0.25
+            )
+
+            result["combined_score"] = combined_score
+
+        # Sort by combined score
+        results.sort(
+            key=lambda x: x.get("combined_score", 0.0),
+            reverse=True
+        )
 
         return results
 
@@ -523,15 +688,38 @@ class WebSearchEngine:
             List of documentation results
         """
         # Construct SAP-specific query
-        query = f"SAP {topic} {doc_type} site:help.sap.com OR site:api.sap.com"
+        query = f"SAP {topic} {doc_type}"
 
         results = self.search(
             query=query,
             num_results=10,
-            filters={"domains": ["help.sap.com", "api.sap.com"]}
+            context={
+                "require_sap_domain": True,
+                "require_official_docs": True
+            }
         )
 
         return results
+
+    def extract_knowledge(
+        self,
+        results: List[Dict[str, Any]],
+        min_trust_score: float = 0.7
+    ) -> List[Any]:
+        """
+        Extract structured knowledge from search results.
+
+        Args:
+            results: Search results
+            min_trust_score: Minimum trust score for extraction
+
+        Returns:
+            List of knowledge entries
+        """
+        return self.knowledge_extractor.extract_from_results(
+            results,
+            min_trust_score=min_trust_score
+        )
 
     def _generate_cache_key(
         self,

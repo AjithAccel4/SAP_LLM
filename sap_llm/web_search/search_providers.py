@@ -452,6 +452,177 @@ class SAPHelpSearchProvider(SearchProvider):
         return results
 
 
+class SerpAPIProvider(SearchProvider):
+    """
+    SerpAPI search provider.
+
+    SerpAPI provides Google search results through an API without
+    needing Google API credentials. Useful for production environments.
+
+    Documentation: https://serpapi.com/
+    """
+
+    def __init__(self, api_key: str):
+        """
+        Initialize SerpAPI provider.
+
+        Args:
+            api_key: SerpAPI key
+        """
+        self.api_key = api_key
+        self.base_url = "https://serpapi.com/search"
+
+    def search(
+        self,
+        query: str,
+        num_results: int = 10,
+        mode: str = "web",
+        filters: Optional[Dict[str, Any]] = None,
+        timeout: float = 10.0
+    ) -> List[Dict[str, Any]]:
+        """Perform SerpAPI search."""
+        results = []
+        filters = filters or {}
+
+        try:
+            # Build parameters
+            params = {
+                "api_key": self.api_key,
+                "q": query,
+                "num": min(num_results, 100),
+                "engine": "google"  # Use Google as search engine
+            }
+
+            # Add search type
+            if mode == "news":
+                params["tbm"] = "nws"
+            elif mode == "images":
+                params["tbm"] = "isch"
+
+            # Add date filter if specified
+            if "date_range" in filters:
+                params["tbs"] = f"qdr:{filters['date_range']}"
+
+            # Add domain filtering
+            if "domains" in filters:
+                sites = " OR ".join([f"site:{d}" for d in filters["domains"]])
+                params["q"] = f"{query} ({sites})"
+
+            # Make request
+            response = requests.get(
+                self.base_url,
+                params=params,
+                timeout=timeout
+            )
+            response.raise_for_status()
+
+            data = response.json()
+
+            # Parse organic results
+            for item in data.get("organic_results", []):
+                results.append({
+                    "title": item.get("title", ""),
+                    "url": item.get("link", ""),
+                    "snippet": item.get("snippet", ""),
+                    "source": "serpapi",
+                    "timestamp": time.time(),
+                    "position": item.get("position", 0)
+                })
+
+            logger.info(f"SerpAPI search returned {len(results)} results for: {query[:50]}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"SerpAPI search error: {e}")
+            raise
+
+        return results
+
+
+class BraveSearchProvider(SearchProvider):
+    """
+    Brave Search API provider.
+
+    Privacy-focused search engine with independent index.
+    Good alternative to Google for general web search.
+
+    Documentation: https://brave.com/search/api/
+    """
+
+    def __init__(self, api_key: str):
+        """
+        Initialize Brave Search provider.
+
+        Args:
+            api_key: Brave Search API key
+        """
+        self.api_key = api_key
+        self.base_url = "https://api.search.brave.com/res/v1/web/search"
+
+    def search(
+        self,
+        query: str,
+        num_results: int = 10,
+        mode: str = "web",
+        filters: Optional[Dict[str, Any]] = None,
+        timeout: float = 10.0
+    ) -> List[Dict[str, Any]]:
+        """Perform Brave search."""
+        results = []
+        filters = filters or {}
+
+        try:
+            # Build parameters
+            params = {
+                "q": query,
+                "count": min(num_results, 20),  # Max 20 per request
+            }
+
+            # Add freshness filter
+            if "date_range" in filters:
+                params["freshness"] = filters["date_range"]
+
+            # Add country/region
+            params["country"] = filters.get("country", "US")
+            params["search_lang"] = filters.get("language", "en")
+
+            # Headers
+            headers = {
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+                "X-Subscription-Token": self.api_key
+            }
+
+            # Make request
+            response = requests.get(
+                self.base_url,
+                params=params,
+                headers=headers,
+                timeout=timeout
+            )
+            response.raise_for_status()
+
+            data = response.json()
+
+            # Parse web results
+            for item in data.get("web", {}).get("results", []):
+                results.append({
+                    "title": item.get("title", ""),
+                    "url": item.get("url", ""),
+                    "snippet": item.get("description", ""),
+                    "source": "brave",
+                    "timestamp": time.time(),
+                    "age": item.get("age", "")
+                })
+
+            logger.info(f"Brave search returned {len(results)} results for: {query[:50]}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Brave search API error: {e}")
+            raise
+
+        return results
+
+
 class ExchangeRateProvider:
     """
     Specialized provider for currency exchange rates.
