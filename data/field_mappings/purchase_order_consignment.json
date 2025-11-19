@@ -1,0 +1,112 @@
+{
+  "document_type": "PurchaseOrder",
+  "subtype": "Consignment",
+  "api_version": "A_PurchaseOrder",
+  "description": "Consignment Purchase Order mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "po_number": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Purchase Order Number"
+    },
+    "po_date": {
+      "sap_field": "PurchaseOrderDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Purchase Order Date"
+    },
+    "vendor_id": {
+      "sap_field": "Supplier",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Vendor/Supplier ID"
+    },
+    "company_code": {
+      "sap_field": "CompanyCode",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Company Code"
+    },
+    "purchasing_organization": {
+      "sap_field": "PurchasingOrganization",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Purchasing Organization"
+    },
+    "purchasing_group": {
+      "sap_field": "PurchasingGroup",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "pad_left:3:0"],
+      "validation": "^[A-Z0-9]{1,3}$",
+      "default": null,
+      "description": "Purchasing Group"
+    },
+    "po_type": {
+      "sap_field": "PurchaseOrderType",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z]{2,4}$",
+      "default": "NB",
+      "description": "Purchase Order Type"
+    },
+    "currency": {
+      "sap_field": "DocumentCurrency",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "validate_iso_currency"],
+      "validation": "^[A-Z]{3}$",
+      "default": "USD",
+      "description": "Currency Code (ISO 4217)"
+    },
+    "special_stock_indicator": {
+      "sap_field": "InventorySpecialStockType",
+      "data_type": "string",
+      "required": false,
+      "max_length": 1,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^K$",
+      "default": "K",
+      "description": "Special Stock Indicator for Consignment"
+    },
+    "consignment_vendor": {
+      "sap_field": "ConsignmentVendor",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": null,
+      "default": null,
+      "description": "Consignment Vendor"
+    }
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "document_type": "SupplierInvoice",
+  "subtype": "DownPayment",
+  "api_version": "A_SupplierInvoice",
+  "description": "Down Payment Invoice mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "invoice_number": {
+      "sap_field": "SupplierInvoiceIDByInvcgParty",
+      "data_type": "string",
+      "required": true,
+      "max_length": 16,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Down Payment Invoice Number"
+    },
+    "invoice_date": {
+      "sap_field": "DocumentDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Invoice Date"
+    },
+    "posting_date": {
+      "sap_field": "PostingDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Posting Date"
+    },
+    "vendor_id": {
+      "sap_field": "InvoicingParty",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Vendor/Supplier ID"
+    },
+    "company_code": {
+      "sap_field": "CompanyCode",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Company Code"
+    },
+    "currency": {
+      "sap_field": "DocumentCurrency",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "validate_iso_currency"],
+      "validation": "^[A-Z]{3}$",
+      "default": "USD",
+      "description": "Currency Code (ISO 4217)"
+    },
+    "down_payment_amount": {
+      "sap_field": "InvoiceGrossAmount",
+      "data_type": "decimal",
+      "required": true,
+      "transformations": ["parse_amount", "format_decimal:2"],
+      "validation": null,
+      "default": null,
+      "description": "Down Payment Amount"
+    },
+    "total_amount": {
+      "sap_field": "InvoiceGrossAmount",
+      "data_type": "decimal",
+      "required": true,
+      "transformations": ["parse_amount", "format_decimal:2"],
+      "validation": null,
+      "default": null,
+      "description": "Total Amount (alternative field)"
+    },
+    "down_payment_percentage": {
+      "sap_field": "DownPaymentPercentage",
+      "data_type": "decimal",
+      "required": false,
+      "transformations": ["parse_amount", "format_decimal:2"],
+      "validation": null,
+      "default": null,
+      "description": "Down Payment Percentage"
+    },
+    "purchase_order": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Purchase Order Number"
+    },
+    "fiscal_year": {
+      "sap_field": "FiscalYear",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["trim"],
+      "validation": "^[0-9]{4}$",
+      "default": null,
+      "description": "Fiscal Year"
+    },
+    "special_gl_indicator": {
+      "sap_field": "SpecialGLCode",
+      "data_type": "string",
+      "required": false,
+      "max_length": 1,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[AF]$",
+      "default": "F",
+      "description": "Special G/L Indicator for Down Payment"
+    }
+  }
+}

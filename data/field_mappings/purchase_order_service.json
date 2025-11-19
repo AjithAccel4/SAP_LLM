@@ -1,0 +1,177 @@
+{
+  "document_type": "PurchaseOrder",
+  "subtype": "Service",
+  "api_version": "A_PurchaseOrder",
+  "description": "Service Purchase Order mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "po_number": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Purchase Order Number"
+    },
+    "po_date": {
+      "sap_field": "PurchaseOrderDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Purchase Order Date"
+    },
+    "vendor_id": {
+      "sap_field": "Supplier",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Vendor/Supplier ID"
+    },
+    "company_code": {
+      "sap_field": "CompanyCode",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Company Code"
+    },
+    "purchasing_organization": {
+      "sap_field": "PurchasingOrganization",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Purchasing Organization"
+    },
+    "purchasing_group": {
+      "sap_field": "PurchasingGroup",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "pad_left:3:0"],
+      "validation": "^[A-Z0-9]{1,3}$",
+      "default": null,
+      "description": "Purchasing Group"
+    },
+    "po_type": {
+      "sap_field": "PurchaseOrderType",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z]{2,4}$",
+      "default": "FO",
+      "description": "Purchase Order Type (Service)"
+    },
+    "currency": {
+      "sap_field": "DocumentCurrency",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "validate_iso_currency"],
+      "validation": "^[A-Z]{3}$",
+      "default": "USD",
+      "description": "Currency Code (ISO 4217)"
+    },
+    "service_performer": {
+      "sap_field": "ServicePerformer",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Service Performer"
+    },
+    "account_assignment_category": {
+      "sap_field": "AccountAssignmentCategory",
+      "data_type": "string",
+      "required": false,
+      "max_length": 1,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[AFKNPQ]$",
+      "default": "K",
+      "description": "Account Assignment Category"
+    }
+  },
+  "nested_mappings": {
+    "services": {
+      "sap_collection": "to_PurchaseOrderItem",
+      "mappings": {
+        "item_number": {
+          "sap_field": "PurchaseOrderItem",
+          "data_type": "string",
+          "required": true,
+          "max_length": 5,
+          "transformations": ["pad_left:5:0"],
+          "validation": null,
+          "default": null,
+          "description": "PO Item Number"
+        },
+        "service_number": {
+          "sap_field": "ServiceNumber",
+          "data_type": "string",
+          "required": false,
+          "max_length": 18,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Service Number"
+        },
+        "description": {
+          "sap_field": "PurchaseOrderItemText",
+          "data_type": "string",
+          "required": true,
+          "max_length": 40,
+          "transformations": ["trim"],
+          "validation": null,
+          "default": null,
+          "description": "Service Description"
+        },
+        "quantity": {
+          "sap_field": "OrderQuantity",
+          "data_type": "decimal",
+          "required": true,
+          "transformations": ["parse_amount", "format_decimal:3"],
+          "validation": null,
+          "default": null,
+          "description": "Service Quantity"
+        },
+        "unit_of_measure": {
+          "sap_field": "OrderPriceUnit",
+          "data_type": "string",
+          "required": false,
+          "max_length": 3,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": "AU",
+          "description": "Unit of Measure"
+        },
+        "unit_price": {
+          "sap_field": "NetPriceAmount",
+          "data_type": "decimal",
+          "required": false,
+          "transformations": ["parse_amount", "format_decimal:2"],
+          "validation": null,
+          "default": null,
+          "description": "Unit Price"
+        }
+      }
+    }
+  }
+}

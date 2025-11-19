@@ -1,0 +1,176 @@
+{
+  "document_type": "GoodsReceipt",
+  "subtype": "Return",
+  "api_version": "A_MaterialDocumentHeader",
+  "description": "Goods Return mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "material_document": {
+      "sap_field": "MaterialDocument",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Material Document Number"
+    },
+    "document_date": {
+      "sap_field": "DocumentDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Document Date"
+    },
+    "posting_date": {
+      "sap_field": "PostingDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Posting Date"
+    },
+    "return_date": {
+      "sap_field": "PostingDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Return Date"
+    },
+    "purchase_order": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Purchase Order Number"
+    },
+    "return_reason": {
+      "sap_field": "ReasonForMovement",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Return Reason Code"
+    },
+    "header_text": {
+      "sap_field": "MaterialDocumentHeaderText",
+      "data_type": "string",
+      "required": false,
+      "max_length": 25,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Header Text"
+    }
+  },
+  "nested_mappings": {
+    "items": {
+      "sap_collection": "to_MaterialDocumentItem",
+      "mappings": {
+        "item_number": {
+          "sap_field": "MaterialDocumentItem",
+          "data_type": "string",
+          "required": true,
+          "max_length": 4,
+          "transformations": ["pad_left:4:0"],
+          "validation": null,
+          "default": null,
+          "description": "Material Document Item Number"
+        },
+        "material_number": {
+          "sap_field": "Material",
+          "data_type": "string",
+          "required": false,
+          "max_length": 40,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Material Number"
+        },
+        "plant": {
+          "sap_field": "Plant",
+          "data_type": "string",
+          "required": true,
+          "max_length": 4,
+          "transformations": ["uppercase", "pad_left:4:0"],
+          "validation": "^[A-Z0-9]{1,4}$",
+          "default": null,
+          "description": "Plant"
+        },
+        "storage_location": {
+          "sap_field": "StorageLocation",
+          "data_type": "string",
+          "required": false,
+          "max_length": 4,
+          "transformations": ["uppercase", "trim"],
+          "validation": "^[A-Z0-9]{1,4}$",
+          "default": null,
+          "description": "Storage Location"
+        },
+        "quantity": {
+          "sap_field": "QuantityInEntryUnit",
+          "data_type": "decimal",
+          "required": true,
+          "transformations": ["parse_amount", "format_decimal:3"],
+          "validation": null,
+          "default": null,
+          "description": "Return Quantity"
+        },
+        "unit_of_measure": {
+          "sap_field": "EntryUnit",
+          "data_type": "string",
+          "required": false,
+          "max_length": 3,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": "EA",
+          "description": "Unit of Measure"
+        },
+        "movement_type": {
+          "sap_field": "GoodsMovementType",
+          "data_type": "string",
+          "required": true,
+          "max_length": 3,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": "122",
+          "description": "Movement Type (Return)"
+        },
+        "purchase_order": {
+          "sap_field": "PurchaseOrder",
+          "data_type": "string",
+          "required": false,
+          "max_length": 10,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Purchase Order Number"
+        },
+        "po_item": {
+          "sap_field": "PurchaseOrderItem",
+          "data_type": "string",
+          "required": false,
+          "max_length": 5,
+          "transformations": ["pad_left:5:0"],
+          "validation": null,
+          "default": null,
+          "description": "PO Item Number"
+        }
+      }
+    }
+  }
+}

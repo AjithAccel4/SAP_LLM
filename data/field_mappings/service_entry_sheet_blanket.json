@@ -1,0 +1,146 @@
+{
+  "document_type": "ServiceEntrySheet",
+  "subtype": "BlanketPO",
+  "api_version": "API_SERVICEENTRYSHEET_PROCESS_SRV",
+  "description": "Service Entry Sheet for Blanket PO mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "service_entry_sheet_number": {
+      "sap_field": "ServiceEntrySheet",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Service Entry Sheet Number"
+    },
+    "blanket_purchase_order": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Blanket Purchase Order Number"
+    },
+    "purchase_order": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Purchase Order Number (alternative field)"
+    },
+    "entry_date": {
+      "sap_field": "ServiceEntrySheetDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Service Entry Date"
+    },
+    "performer": {
+      "sap_field": "ServicePerformer",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Service Performer"
+    },
+    "short_text": {
+      "sap_field": "ServiceEntrySheetShortText",
+      "data_type": "string",
+      "required": false,
+      "max_length": 40,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Short Text"
+    },
+    "period_start": {
+      "sap_field": "ServicePeriodStartDate",
+      "data_type": "date",
+      "required": false,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Service Period Start Date"
+    },
+    "period_end": {
+      "sap_field": "ServicePeriodEndDate",
+      "data_type": "date",
+      "required": false,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Service Period End Date"
+    }
+  },
+  "nested_mappings": {
+    "services": {
+      "sap_collection": "to_ServiceEntrySheetItem",
+      "mappings": {
+        "item_number": {
+          "sap_field": "ServiceEntrySheetItem",
+          "data_type": "string",
+          "required": true,
+          "max_length": 10,
+          "transformations": ["pad_left:10:0"],
+          "validation": null,
+          "default": null,
+          "description": "Service Entry Sheet Item Number"
+        },
+        "purchase_order": {
+          "sap_field": "PurchaseOrder",
+          "data_type": "string",
+          "required": true,
+          "max_length": 10,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Purchase Order Number"
+        },
+        "po_item": {
+          "sap_field": "PurchaseOrderItem",
+          "data_type": "string",
+          "required": true,
+          "max_length": 5,
+          "transformations": ["pad_left:5:0"],
+          "validation": null,
+          "default": null,
+          "description": "PO Item Number"
+        },
+        "quantity": {
+          "sap_field": "Quantity",
+          "data_type": "decimal",
+          "required": true,
+          "transformations": ["parse_amount", "format_decimal:3"],
+          "validation": null,
+          "default": null,
+          "description": "Service Quantity"
+        },
+        "unit_of_measure": {
+          "sap_field": "UnitOfMeasure",
+          "data_type": "string",
+          "required": false,
+          "max_length": 3,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": "AU",
+          "description": "Unit of Measure"
+        }
+      }
+    }
+  }
+}

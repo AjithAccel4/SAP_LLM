@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from sap_llm.knowledge_base.field_mappings import FieldMappingManager
 from sap_llm.knowledge_base.storage import KnowledgeBaseStorage
 from sap_llm.utils.logger import get_logger
 
@@ -33,6 +34,7 @@ class KnowledgeBaseQuery:
             storage: Knowledge base storage instance
         """
         self.storage = storage
+        self.field_mapping_manager = FieldMappingManager()
         logger.info("Knowledge Base Query initialized")
 
     def find_api_for_document(
@@ -1082,15 +1084,54 @@ class KnowledgeBaseQuery:
         - SAP API format → Internal storage format
         - Legacy format → Current format
 
+        Uses the FieldMappingManager for database-driven field mappings.
+        Falls back to legacy hardcoded mappings if no mapping file found.
+
         Args:
             source_data: Source document data
-            source_format: Source format identifier (e.g., "OCR", "PURCHASE_ORDER")
+            source_format: Source format identifier (e.g., "OCR", "PURCHASE_ORDER", "PurchaseOrder:Standard")
             target_format: Target format identifier (e.g., "SAP_API", "SAP_ODATA")
 
         Returns:
             Transformed document data in target format
         """
-        # Get field mapping for this transformation
+        # Parse source_format to extract document_type and subtype
+        # Format can be:
+        # - "PurchaseOrder:Standard" (explicit)
+        # - "PURCHASE_ORDER" (will use Standard subtype)
+        # - "purchase_order_service" (will parse as PurchaseOrder:Service)
+
+        document_type, subtype = self._parse_format_identifier(source_format)
+
+        # Try to use FieldMappingManager first
+        mapping = self.field_mapping_manager.get_mapping(
+            document_type=document_type,
+            subtype=subtype,
+            target_format=target_format
+        )
+
+        if mapping:
+            # Use database-driven mapping
+            logger.debug(f"Using mapping: {document_type}:{subtype} → {target_format}")
+
+            # Validate data before transformation (optional)
+            is_valid, errors = self.field_mapping_manager.validate_mapping(
+                source_data, mapping, strict=False
+            )
+
+            if errors:
+                logger.warning(f"Validation warnings for {document_type}: {errors}")
+
+            # Transform data
+            target_data = self.field_mapping_manager.transform_data(
+                source_data, mapping, max_nesting_level=5
+            )
+
+            return target_data
+
+        # Fallback to legacy hardcoded mappings
+        logger.info(f"No mapping found for {document_type}:{subtype}, using legacy method")
+
         field_map = self._get_field_mapping(source_format, target_format)
 
         if not field_map:
@@ -1099,7 +1140,7 @@ class KnowledgeBaseQuery:
 
         target_data = {}
 
-        # Apply field mappings
+        # Apply field mappings (legacy method)
         for source_field, target_field_config in field_map.items():
             if source_field not in source_data:
                 continue
@@ -1132,6 +1173,74 @@ class KnowledgeBaseQuery:
                     target_data[key] = value
 
         return target_data
+
+    def _parse_format_identifier(self, format_str: str) -> tuple:
+        """
+        Parse format identifier to extract document type and subtype.
+
+        Args:
+            format_str: Format identifier string
+
+        Returns:
+            Tuple of (document_type, subtype)
+
+        Examples:
+            "PurchaseOrder:Standard" -> ("PurchaseOrder", "Standard")
+            "PURCHASE_ORDER" -> ("PurchaseOrder", "Standard")
+            "purchase_order_service" -> ("PurchaseOrder", "Service")
+            "supplier_invoice_credit_memo" -> ("SupplierInvoice", "CreditMemo")
+        """
+        # Handle explicit format: "DocumentType:Subtype"
+        if ":" in format_str:
+            parts = format_str.split(":", 1)
+            return parts[0], parts[1]
+
+        # Parse common format strings
+        format_upper = format_str.upper().replace("-", "_")
+
+        # Map common patterns
+        type_mapping = {
+            "PURCHASE_ORDER": ("PurchaseOrder", "Standard"),
+            "PO": ("PurchaseOrder", "Standard"),
+            "PURCHASE_ORDER_STANDARD": ("PurchaseOrder", "Standard"),
+            "PURCHASE_ORDER_SERVICE": ("PurchaseOrder", "Service"),
+            "PURCHASE_ORDER_SUBCONTRACTING": ("PurchaseOrder", "Subcontracting"),
+            "PURCHASE_ORDER_CONSIGNMENT": ("PurchaseOrder", "Consignment"),
+
+            "SUPPLIER_INVOICE": ("SupplierInvoice", "Standard"),
+            "INVOICE": ("SupplierInvoice", "Standard"),
+            "SUPPLIER_INVOICE_STANDARD": ("SupplierInvoice", "Standard"),
+            "SUPPLIER_INVOICE_CREDIT_MEMO": ("SupplierInvoice", "CreditMemo"),
+            "SUPPLIER_INVOICE_DOWN_PAYMENT": ("SupplierInvoice", "DownPayment"),
+            "CREDIT_MEMO": ("SupplierInvoice", "CreditMemo"),
+
+            "GOODS_RECEIPT": ("GoodsReceipt", "PurchaseOrder"),
+            "GOODS_RECEIPT_FOR_PO": ("GoodsReceipt", "PurchaseOrder"),
+            "GOODS_RECEIPT_RETURN": ("GoodsReceipt", "Return"),
+            "GR": ("GoodsReceipt", "PurchaseOrder"),
+
+            "SERVICE_ENTRY_SHEET": ("ServiceEntrySheet", "PurchaseOrder"),
+            "SERVICE_ENTRY_SHEET_FOR_PO": ("ServiceEntrySheet", "PurchaseOrder"),
+            "SERVICE_ENTRY_SHEET_BLANKET": ("ServiceEntrySheet", "BlanketPO"),
+            "SES": ("ServiceEntrySheet", "PurchaseOrder"),
+
+            "PAYMENT_TERMS": ("PaymentTerms", "Standard"),
+            "INCOTERMS": ("Incoterms", "Standard"),
+
+            "SALES_ORDER": ("SalesOrder", "Standard"),
+            "SO": ("SalesOrder", "Standard"),
+        }
+
+        result = type_mapping.get(format_upper)
+        if result:
+            return result
+
+        # Default: try to convert to PascalCase and use Standard subtype
+        # Convert: "purchase_order" -> "PurchaseOrder"
+        words = format_str.replace("-", "_").split("_")
+        document_type = "".join(word.capitalize() for word in words)
+
+        return document_type, "Standard"
 
     def _get_field_mapping(
         self, source_format: str, target_format: str

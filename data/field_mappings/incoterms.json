@@ -1,0 +1,147 @@
+{
+  "document_type": "Incoterms",
+  "subtype": "Standard",
+  "api_version": "A_Incoterms",
+  "description": "Incoterms mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "incoterms": {
+      "sap_field": "IncotermsClassification",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z]{3}$",
+      "default": null,
+      "description": "Incoterms Classification (3-letter code)"
+    },
+    "incoterms_code": {
+      "sap_field": "IncotermsClassification",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z]{3}$",
+      "default": null,
+      "description": "Incoterms Code (alternative field)"
+    },
+    "incoterms_classification": {
+      "sap_field": "IncotermsClassification",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z]{3}$",
+      "default": null,
+      "description": "Incoterms Classification (alternative field)"
+    },
+    "incoterms_location": {
+      "sap_field": "IncotermsLocation1",
+      "data_type": "string",
+      "required": false,
+      "max_length": 70,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Incoterms Location 1"
+    },
+    "location_1": {
+      "sap_field": "IncotermsLocation1",
+      "data_type": "string",
+      "required": false,
+      "max_length": 70,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Incoterms Location 1 (alternative field)"
+    },
+    "incoterms_location_2": {
+      "sap_field": "IncotermsLocation2",
+      "data_type": "string",
+      "required": false,
+      "max_length": 70,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Incoterms Location 2"
+    },
+    "location_2": {
+      "sap_field": "IncotermsLocation2",
+      "data_type": "string",
+      "required": false,
+      "max_length": 70,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Incoterms Location 2 (alternative field)"
+    },
+    "incoterms_version": {
+      "sap_field": "IncotermsVersion",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["trim"],
+      "validation": "^[0-9]{4}$",
+      "default": "2020",
+      "description": "Incoterms Version (year)"
+    },
+    "version": {
+      "sap_field": "IncotermsVersion",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["trim"],
+      "validation": "^[0-9]{4}$",
+      "default": "2020",
+      "description": "Incoterms Version (alternative field)"
+    },
+    "description": {
+      "sap_field": "IncotermsDescription",
+      "data_type": "string",
+      "required": false,
+      "max_length": 100,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Incoterms Description"
+    },
+    "incoterms_transfer_location": {
+      "sap_field": "IncotermsTransferLocation",
+      "data_type": "string",
+      "required": false,
+      "max_length": 28,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Transfer Location"
+    }
+  },
+  "reference_data": {
+    "valid_codes_2020": [
+      "EXW", "FCA", "FAS", "FOB", "CPT", "CIP",
+      "CFR", "CIF", "DAP", "DPU", "DDP"
+    ],
+    "valid_codes_2010": [
+      "EXW", "FCA", "FAS", "FOB", "CPT", "CIP",
+      "CFR", "CIF", "DAT", "DAP", "DDP"
+    ],
+    "descriptions": {
+      "EXW": "Ex Works",
+      "FCA": "Free Carrier",
+      "FAS": "Free Alongside Ship",
+      "FOB": "Free On Board",
+      "CPT": "Carriage Paid To",
+      "CIP": "Carriage and Insurance Paid To",
+      "CFR": "Cost and Freight",
+      "CIF": "Cost, Insurance and Freight",
+      "DAP": "Delivered At Place",
+      "DPU": "Delivered at Place Unloaded",
+      "DDP": "Delivered Duty Paid",
+      "DAT": "Delivered At Terminal (2010 version)"
+    }
+  }
+}
