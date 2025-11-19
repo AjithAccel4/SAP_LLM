@@ -1,0 +1,74 @@
+# Testing Dependencies for SAP_LLM
+# =====================================
+# Install with: pip install -r requirements-test.txt
+
+# Core Testing Framework
+pytest>=7.4.3
+pytest-asyncio>=0.21.1          # Async test support
+pytest-cov>=4.1.0               # Coverage measurement
+pytest-mock>=3.12.0             # Mocking utilities
+pytest-xdist>=3.5.0             # Parallel test execution
+pytest-timeout>=2.2.0           # Test timeout handling
+pytest-benchmark>=4.0.0         # Performance benchmarking
+
+# Code Quality & Linting
+black>=23.12.0                  # Code formatting
+ruff>=0.1.8                     # Fast Python linter
+mypy>=1.7.1                     # Static type checking
+isort>=5.13.2                   # Import sorting
+flake8>=7.0.0                   # Style guide enforcement
+pylint>=3.0.3                   # Comprehensive linting
+bandit>=1.7.6                   # Security linting
+
+# Coverage Tools
+coverage[toml]>=7.3.4           # Coverage.py with TOML support
+coverage-badge>=1.1.0           # Generate coverage badges
+
+# Testing Utilities
+faker>=22.0.0                   # Generate fake test data
+freezegun>=1.4.0                # Mock datetime for tests
+responses>=0.24.1               # Mock HTTP responses
+factory-boy>=3.3.0              # Test fixtures factory
+hypothesis>=6.92.2              # Property-based testing
+
+# Async Testing
+aioresponses>=0.7.6             # Mock aiohttp responses
+pytest-aiohttp>=1.0.5           # aiohttp test utilities
+
+# Database Testing
+pytest-postgresql>=5.0.0        # PostgreSQL fixtures
+pytest-mongodb>=3.1.0           # MongoDB fixtures
+fakeredis>=2.20.1               # Fake Redis for testing
+
+# API Testing
+httpx>=0.25.2                   # Modern HTTP client
+requests>=2.31.0                # HTTP library
+requests-mock>=1.11.0           # Mock requests
+
+# Documentation Testing
+pytest-doctestplus>=1.1.0       # Enhanced doctest
+sphinx>=7.2.6                   # Documentation generation
+
+# Performance & Load Testing
+locust>=2.20.0                  # Load testing framework
+pytest-profiling>=1.7.0         # Profile test performance
+
+# Reporting
+pytest-html>=4.1.1              # HTML test reports
+pytest-json-report>=1.5.0       # JSON test reports
+allure-pytest>=2.13.2           # Allure test reports
+
+# Chaos Engineering
+pytest-randomly>=3.15.0         # Randomize test order
+pytest-repeat>=0.9.3            # Repeat tests for flakiness detection
+
+# Security Testing
+safety>=3.0.1                   # Dependency vulnerability scanning
+
+# Compatibility
+tox>=4.11.4                     # Multi-environment testing
+
+# Development Tools
+ipython>=8.18.1                 # Enhanced Python shell
+ipdb>=0.13.13                   # IPython debugger
+pre-commit>=3.6.0               # Git hooks framework

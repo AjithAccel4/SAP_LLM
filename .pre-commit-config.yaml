@@ -1,0 +1,132 @@
+# Pre-commit hooks for SAP_LLM
+# ===============================
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+# Update: pre-commit autoupdate
+
+default_language_version:
+  python: python3.11
+
+repos:
+  # Code Formatting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        name: Format code with Black
+        language_version: python3.11
+        args: [--line-length=100]
+
+  # Import Sorting
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: Sort imports with isort
+        args: [--profile=black, --line-length=100]
+
+  # Python Linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.15
+    hooks:
+      - id: ruff
+        name: Lint with Ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # Security Checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        name: Security check with Bandit
+        args: [-c, pyproject.toml, -r, sap_llm/]
+        additional_dependencies: ["bandit[toml]"]
+
+  # YAML Validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+        name: Validate YAML files
+        args: [--safe]
+      - id: check-json
+        name: Validate JSON files
+      - id: check-toml
+        name: Validate TOML files
+      - id: check-added-large-files
+        name: Check for large files
+        args: [--maxkb=1000]
+      - id: check-case-conflict
+        name: Check for case conflicts
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: detect-private-key
+        name: Detect private keys
+      - id: end-of-file-fixer
+        name: Fix end of files
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        name: Fix mixed line endings
+      - id: check-executables-have-shebangs
+        name: Check executables have shebangs
+      - id: check-shebang-scripts-are-executable
+        name: Check shebang scripts are executable
+
+  # Secrets Detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+
+  # Type Checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.1
+    hooks:
+      - id: mypy
+        name: Type check with MyPy
+        additional_dependencies: [types-all]
+        args: [--ignore-missing-imports, --config-file=pyproject.toml]
+        exclude: ^(tests/|examples/)
+
+  # Documentation
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        name: Check docstring style
+        args: [--convention=google]
+        exclude: ^(tests/|examples/|migrations/)
+
+  # Dockerfile Linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        name: Lint Dockerfiles
+
+  # Test Coverage Check (Custom Local Hook)
+  - repo: local
+    hooks:
+      - id: pytest-coverage
+        name: Run tests and check coverage
+        entry: bash -c 'pytest tests/test_config.py tests/test_utils.py --cov=sap_llm.config --cov=sap_llm.utils --cov-fail-under=80 -q || (echo "❌ Coverage below threshold or tests failed"; exit 1)'
+        language: system
+        pass_filenames: false
+        always_run: false
+        stages: [commit]
+
+      - id: no-commit-to-main
+        name: Prevent commits to main
+        entry: bash -c 'if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then echo "❌ Cannot commit directly to main branch"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]
+
+# CI: Use --no-verify to skip hooks in CI if needed
+# Skip specific hooks: SKIP=hook-id git commit -m "message"
