@@ -1,7 +1,7 @@
 # SAP_LLM: Ultra-Enterprise Autonomous Document Processing System
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/qorsync/sap-llm)
-[![Coverage](https://img.shields.io/badge/coverage-85%25-green.svg)](https://github.com/qorsync/sap-llm)
+[![Coverage](https://img.shields.io/badge/coverage-1%25%20→%2090%25%20target-orange.svg)](./COVERAGE_BASELINE_REPORT.md)
 [![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0--alpha-orange.svg)](https://github.com/qorsync/sap-llm/releases)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
@@ -420,21 +420,36 @@ kubectl logs -f deployment/sap-llm-api -n sap-llm
 
 ### Run Tests
 
-```bash
-# Run all tests
-pytest
+**Test Coverage Target: ≥90%** | [View Coverage Report](./COVERAGE_BASELINE_REPORT.md) | [Testing Guide](./docs/TESTING_GUIDE.md)
 
-# Run with coverage report
-pytest --cov=sap_llm --cov-report=html
+```bash
+# Run all tests with coverage
+pytest --cov=sap_llm --cov-report=html --cov-report=term-missing
+
+# Run specific test categories
+pytest -m unit                  # Unit tests only
+pytest -m integration           # Integration tests
+pytest -m performance           # Performance benchmarks
 
 # Run specific test suites
 pytest tests/unit/test_models.py
 pytest tests/integration/test_end_to_end.py
 pytest tests/performance/test_latency.py
 
+# Parallel execution (faster)
+pytest -n auto
+
 # View coverage report
 open htmlcov/index.html
 ```
+
+**Current Test Status:**
+- ✅ 31 tests passing
+- ✅ Test execution time: <20s
+- ⚠️ Current coverage: 1.09% → **Target: 90%**
+- 📊 Utils coverage: hash.py (95.35%), timer.py (76.56%)
+
+See [Testing Guide](./docs/TESTING_GUIDE.md) for comprehensive testing documentation.
 
 ---
 
@@ -449,6 +464,8 @@ Comprehensive documentation is available to help you get started:
 
 ### For Developers
 - **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Development environment setup and coding standards
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - Comprehensive testing documentation and coverage requirements ⭐
+- **[Coverage Baseline Report](COVERAGE_BASELINE_REPORT.md)** - Current test coverage status and gaps
 - **[Architecture Documentation](docs/ARCHITECTURE.md)** - System design and architecture deep-dive
 - **[Web Search Implementation](docs/WEB_SEARCH_IMPLEMENTATION.md)** - Multi-provider search system
 
