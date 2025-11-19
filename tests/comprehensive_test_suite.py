@@ -1,13 +1,16 @@
 """
-TODO 9: Comprehensive Test Suite for 90%+ Coverage
+Comprehensive Test Suite for 90%+ Coverage
 
-Tests for all critical modules:
+Production-ready tests for all critical modules:
 - Security (100% coverage required)
-- Data pipeline
-- PMG
-- SHWL
-- Models
-- Performance tests
+- Data pipeline (end-to-end + batch processing)
+- PMG (versioning, embeddings, context retrieval)
+- SHWL (anomaly detection, healing loops)
+- Models (training, inference, continuous learning)
+- Performance tests (latency, throughput, memory)
+- Integration tests (full pipeline validation)
+
+Run with: pytest tests/comprehensive_test_suite.py -v --cov=sap_llm
 """
 
 import pytest
@@ -339,6 +342,306 @@ class TestPerformance:
         # Should complete in < 100ms
         assert duration < 0.1
         assert len(results) == 10
+
+
+# ============================================================================
+# END-TO-END INTEGRATION TESTS
+# ============================================================================
+
+class TestEndToEndPipeline:
+    """End-to-end pipeline integration tests."""
+
+    def test_full_document_pipeline(self):
+        """Test complete document processing pipeline."""
+        # 1. Document ingestion
+        doc = {
+            "doc_type": "invoice",
+            "content": "Sample invoice content",
+            "vendor_id": "V001"
+        }
+
+        # 2. Context-aware processing
+        from sap_llm.inference.context_aware_processor import ContextAwareProcessor
+        processor = ContextAwareProcessor()
+        result = processor.process_document(doc)
+
+        assert "confidence" in result
+        assert result["confidence"] > 0.0
+
+        # 3. Store in PMG
+        from sap_llm.pmg.graph_client import ProcessMemoryGraph
+        pmg = ProcessMemoryGraph()
+        stored = pmg.store_processed_document("test_doc_1", result)
+
+        assert stored == True
+
+    def test_batch_processing(self):
+        """Test batch document processing."""
+        from sap_llm.inference.context_aware_processor import ContextAwareProcessor
+
+        processor = ContextAwareProcessor()
+
+        # Create batch of documents
+        documents = [
+            {"doc_type": "invoice", "id": f"inv_{i}"}
+            for i in range(10)
+        ]
+
+        # Process batch
+        results = []
+        for doc in documents:
+            result = processor.process_document(doc)
+            results.append(result)
+
+        assert len(results) == 10
+        assert all(r["confidence"] > 0 for r in results)
+
+    def test_shwl_healing_cycle(self):
+        """Test complete SHWL healing cycle."""
+        from sap_llm.shwl.healing_loop import SelfHealingWorkflowLoop
+        from sap_llm.pmg.graph_client import ProcessMemoryGraph
+
+        pmg = ProcessMemoryGraph()
+        loop = SelfHealingWorkflowLoop(pmg=pmg)
+
+        result = loop.run_healing_cycle()
+
+        assert "exceptions_fetched" in result
+        assert "clusters_found" in result
+
+    def test_continuous_learning_cycle(self):
+        """Test continuous learning cycle."""
+        from sap_llm.training.continuous_learner import ContinuousLearner
+
+        learner = ContinuousLearner()
+        result = learner.run_learning_cycle()
+
+        assert "status" in result
+
+
+# ============================================================================
+# EDGE CASE TESTS
+# ============================================================================
+
+class TestEdgeCases:
+    """Edge case and error handling tests."""
+
+    def test_empty_document(self):
+        """Test processing empty document."""
+        from sap_llm.inference.context_aware_processor import ContextAwareProcessor
+
+        processor = ContextAwareProcessor()
+        result = processor.process_document({})
+
+        assert "confidence" in result
+
+    def test_malformed_payload(self):
+        """Test SAP connector with malformed payload."""
+        from sap_llm.connectors.sap_connector_library import (
+            SAPConnectorLibrary, ConnectionConfig, ERPSystem, DocumentType
+        )
+
+        config = ConnectionConfig(
+            system=ERPSystem.SAP_S4HANA,
+            base_url="http://test"
+        )
+
+        connector = SAPConnectorLibrary(config)
+
+        # Missing required fields
+        with pytest.raises(ValueError):
+            connector.post_to_sap(
+                DocumentType.SALES_ORDER,
+                {}
+            )
+
+    def test_missing_secrets(self):
+        """Test secrets manager with missing secrets."""
+        from sap_llm.security.secrets_manager import SecretsManager
+
+        manager = SecretsManager(backend="mock")
+        secret = manager.get_secret("nonexistent_secret")
+
+        # Should return None for nonexistent secrets
+        assert secret is None
+
+    def test_circuit_breaker_open(self):
+        """Test circuit breaker when SAP is down."""
+        from sap_llm.connectors.sap_connector_library import (
+            SAPConnectorLibrary, ConnectionConfig, ERPSystem, DocumentType
+        )
+
+        config = ConnectionConfig(
+            system=ERPSystem.SAP_S4HANA,
+            base_url="http://test"
+        )
+
+        connector = SAPConnectorLibrary(config)
+
+        # Force circuit breaker open
+        connector.circuit_breaker_state = "open"
+
+        with pytest.raises(Exception, match="Circuit breaker is OPEN"):
+            connector.post_to_sap(
+                DocumentType.SALES_ORDER,
+                {"SoldToParty": "1000", "SalesOrderType": "OR"}
+            )
+
+    def test_high_drift_detection(self):
+        """Test model drift detection with high PSI."""
+        from sap_llm.monitoring.comprehensive_observability import get_observability
+
+        obs = get_observability()
+
+        # Record high drift (should log warning)
+        obs.record_model_drift(0.35)
+
+    def test_idoc_missing_system_id(self):
+        """Test IDoc posting without required system_id."""
+        from sap_llm.connectors.sap_connector_library import (
+            SAPConnectorLibrary, ConnectionConfig, ERPSystem
+        )
+
+        config = ConnectionConfig(
+            system=ERPSystem.SAP_S4HANA,
+            base_url="http://test"
+        )
+
+        connector = SAPConnectorLibrary(config)
+
+        # Missing system_id should raise error
+        with pytest.raises(ValueError, match="Missing required field 'system_id'"):
+            connector.post_idoc(
+                "ORDERS05",
+                {"client": "100", "segments": []}
+            )
+
+
+# ============================================================================
+# TEST DATA GENERATORS
+# ============================================================================
+
+class TestDataGenerators:
+    """Test data generator utilities."""
+
+    @staticmethod
+    def generate_invoice(invoice_number: str = None) -> Dict:
+        """Generate synthetic invoice for testing."""
+        import random
+
+        if not invoice_number:
+            invoice_number = f"INV-{random.randint(10000, 99999)}"
+
+        return {
+            "doc_type": "invoice",
+            "invoice_number": invoice_number,
+            "vendor_id": f"V{random.randint(1000, 9999)}",
+            "total_amount": round(random.uniform(100, 10000), 2),
+            "currency": "USD",
+            "line_items": [
+                {
+                    "item_id": f"ITEM-{i}",
+                    "description": f"Test item {i}",
+                    "quantity": random.randint(1, 100),
+                    "unit_price": round(random.uniform(10, 500), 2)
+                }
+                for i in range(random.randint(1, 5))
+            ]
+        }
+
+    @staticmethod
+    def generate_purchase_order() -> Dict:
+        """Generate synthetic purchase order for testing."""
+        import random
+
+        return {
+            "doc_type": "purchase_order",
+            "po_number": f"PO-{random.randint(100000, 999999)}",
+            "vendor_id": f"V{random.randint(1000, 9999)}",
+            "total_amount": round(random.uniform(1000, 50000), 2),
+            "currency": "USD",
+            "items": random.randint(1, 10)
+        }
+
+    @staticmethod
+    def generate_batch_documents(count: int = 100) -> List[Dict]:
+        """Generate batch of test documents."""
+        docs = []
+        for i in range(count):
+            if i % 2 == 0:
+                docs.append(TestDataGenerators.generate_invoice())
+            else:
+                docs.append(TestDataGenerators.generate_purchase_order())
+        return docs
+
+    def test_invoice_generator(self):
+        """Test invoice generator."""
+        invoice = self.generate_invoice("INV-12345")
+
+        assert invoice["doc_type"] == "invoice"
+        assert invoice["invoice_number"] == "INV-12345"
+        assert "vendor_id" in invoice
+        assert len(invoice["line_items"]) > 0
+
+    def test_batch_generator(self):
+        """Test batch document generator."""
+        docs = self.generate_batch_documents(50)
+
+        assert len(docs) == 50
+        assert all("doc_type" in d for d in docs)
+
+
+# ============================================================================
+# STRESS TESTS
+# ============================================================================
+
+class TestStress:
+    """Stress and load tests."""
+
+    def test_high_volume_processing(self):
+        """Test processing high volume of documents."""
+        from sap_llm.inference.context_aware_processor import ContextAwareProcessor
+
+        processor = ContextAwareProcessor()
+
+        # Process 1000 documents
+        docs = TestDataGenerators.generate_batch_documents(1000)
+
+        import time
+        start = time.time()
+
+        for doc in docs[:100]:  # Test with 100 for speed
+            processor.process_document(doc)
+
+        duration = time.time() - start
+
+        # Should process 100 docs in < 30 seconds
+        assert duration < 30.0
+
+    def test_memory_leak_detection(self):
+        """Test for memory leaks in long-running operations."""
+        import gc
+        import sys
+        from sap_llm.inference.context_aware_processor import ContextAwareProcessor
+
+        processor = ContextAwareProcessor()
+
+        # Get initial memory
+        gc.collect()
+        initial_objects = len(gc.get_objects())
+
+        # Process many documents
+        for i in range(100):
+            doc = TestDataGenerators.generate_invoice()
+            processor.process_document(doc)
+
+        # Check memory growth
+        gc.collect()
+        final_objects = len(gc.get_objects())
+
+        # Object count should not grow excessively
+        growth = final_objects - initial_objects
+        assert growth < 10000  # Allow some growth but not excessive
 
 
 # ============================================================================

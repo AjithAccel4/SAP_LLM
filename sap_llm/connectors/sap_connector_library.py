@@ -289,11 +289,31 @@ class SAPConnectorLibrary:
         - ORDERS05 (Purchase Order)
         - INVOIC02 (Supplier Invoice)
         - DESADV01 (Delivery Notification)
+
+        Args:
+            idoc_type: IDoc type (e.g., ORDERS05)
+            idoc_data: IDoc data including:
+                - client: SAP client (default: "100")
+                - system_id: SAP system ID (required, e.g., "PRD", "DEV", "QAS")
+                - logical_system: SAP logical system (required, e.g., "SAPCLNT100")
+                - segments: List of IDoc segments
+
+        Raises:
+            ValueError: If required fields are missing
         """
         if idoc_type not in self.IDOC_TYPES:
             raise ValueError(f"Unsupported IDoc type: {idoc_type}")
 
-        logger.info(f"Posting IDoc: {idoc_type}")
+        # Validate required fields
+        system_id = idoc_data.get("system_id")
+        if not system_id:
+            raise ValueError("Missing required field 'system_id'. Must be SAP system ID (e.g., 'PRD', 'DEV', 'QAS')")
+
+        logical_system = idoc_data.get("logical_system")
+        if not logical_system:
+            raise ValueError("Missing required field 'logical_system'. Must be SAP logical system name (e.g., 'SAPCLNT100')")
+
+        logger.info(f"Posting IDoc: {idoc_type} to system {system_id} ({logical_system})")
 
         # Build IDoc structure
         idoc = {
@@ -310,9 +330,9 @@ class SAPConnectorLibrary:
                 "SNDPOR": "SAPLLM",
                 "SNDPRT": "LS",
                 "SNDPRN": "SAPLLM",
-                "RCVPOR": "SAP" + idoc_data.get("system_id", "XXX"),
+                "RCVPOR": f"SAP{system_id}",
                 "RCVPRT": "LS",
-                "RCVPRN": idoc_data.get("logical_system", "SAPXXX")
+                "RCVPRN": logical_system
             },
             "EDI_DD40": idoc_data.get("segments", [])
         }
