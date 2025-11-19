@@ -5,6 +5,9 @@
 # Include production dependencies
 -r requirements.txt
 
+# Dependency management tools
+pip-tools==7.3.0  # For generating lock files with hashes
+
 # Code formatting and linting
 black==23.12.1
 ruff==0.1.9
@@ -39,8 +42,10 @@ pdoc==14.3.0
 
 # Code quality and security
 bandit==1.7.6  # Security linter
-safety==3.0.1  # Dependency vulnerability scanner
-pip-audit==2.6.3  # PyPI vulnerability scanner
+# NOTE: safety 3.0.1 requires commercial license for production use
+# For commercial projects, use pip-audit (open source) or purchase Safety license
+# safety==3.0.1  # Commented out - requires commercial license
+pip-audit==2.6.3  # PyPI vulnerability scanner (recommended for commercial use)
 pylint==3.0.3
 
 # Pre-commit hooks
