@@ -9,14 +9,16 @@ Features:
 - Improves low-confidence predictions with historical patterns
 - Vendor-specific pattern matching and learning
 - Multi-document context (PO → Invoice → GR chains)
+- Intelligent web search triggering for low-confidence predictions
 - Performance optimized with caching (< 100ms P95 latency)
 
 Architecture:
 1. Initial prediction from model
 2. Context retrieval from PMG if confidence < threshold
 3. RAG-enhanced re-prediction with historical context
-4. Confidence boosting based on historical accuracy
-5. Vendor pattern caching for repeated vendors
+4. Web search triggered if confidence still < 0.65 (2025 best practices)
+5. Confidence boosting based on historical accuracy
+6. Vendor pattern caching for repeated vendors
 """
 
 import logging
@@ -25,32 +27,51 @@ from sap_llm.pmg.context_retriever import ContextRetriever, RetrievalConfig
 from sap_llm.pmg.graph_client import ProcessMemoryGraph
 from sap_llm.pmg.vector_store import PMGVectorStore
 from sap_llm.pmg.embedding_generator import EnhancedEmbeddingGenerator
+from sap_llm.agents.web_search_agent import WebSearchAgent
 
 logger = logging.getLogger(__name__)
 
 
 class ContextAwareProcessor:
     """
-    RAG-enhanced document processor.
+    RAG-enhanced document processor with intelligent web search.
 
     Workflow:
     1. Initial prediction from model
-    2. If low confidence, retrieve similar docs from PMG
+    2. If low confidence (< 0.7), retrieve similar docs from PMG
     3. Re-process with historical context
-    4. Boost confidence with patterns
+    4. If still low confidence (< 0.65), trigger web search (2025 best practice)
+    5. Boost confidence with patterns
     """
 
     def __init__(
         self,
         model: Any = None,
         pmg: Optional[ProcessMemoryGraph] = None,
-        vector_store: Optional[PMGVectorStore] = None
+        vector_store: Optional[PMGVectorStore] = None,
+        enable_web_search: bool = True,
+        web_search_config: Optional[Dict[str, Any]] = None,
     ):
         self.model = model
         self.retriever = ContextRetriever(
             graph_client=pmg,
             vector_store=vector_store
         )
+
+        # Web search agent (2025 enhancement)
+        self.enable_web_search = enable_web_search
+        self.web_search_agent = None
+        if enable_web_search:
+            try:
+                self.web_search_agent = WebSearchAgent(web_search_config)
+                logger.info("Web search agent enabled for low-confidence predictions")
+            except Exception as e:
+                logger.warning(f"Failed to initialize web search agent: {e}")
+                self.enable_web_search = False
+
+        # Confidence thresholds (based on 2025 research)
+        self.rag_threshold = 0.7  # Trigger RAG
+        self.web_search_threshold = 0.65  # Trigger web search
 
         # Vendor-specific pattern cache
         self.vendor_patterns: Dict[str, Dict[str, Any]] = {}
@@ -65,6 +86,7 @@ class ContextAwareProcessor:
         self.stats = {
             "total_processed": 0,
             "context_used": 0,
+            "web_search_triggered": 0,
             "confidence_improved": 0,
             "avg_improvement": 0.0,
             "vendor_pattern_hits": 0,
@@ -72,7 +94,7 @@ class ContextAwareProcessor:
             "cache_hits": 0
         }
 
-        logger.info("ContextAwareProcessor initialized with vendor patterns and caching")
+        logger.info("ContextAwareProcessor initialized with RAG + web search capabilities")
 
     def process_document(
         self,
@@ -80,18 +102,25 @@ class ContextAwareProcessor:
         use_context: bool = True
     ) -> Dict[str, Any]:
         """
-        Process document with optional context enhancement.
+        Process document with RAG and intelligent web search.
+
+        Enhanced workflow (2025 best practices):
+        1. Initial prediction
+        2. If confidence < 0.7: Retrieve PMG context
+        3. If confidence < 0.65: Trigger web search
+        4. Return best result
         """
         # Initial prediction
         initial_result = self._initial_prediction(document)
+        current_result = initial_result
 
         self.stats["total_processed"] += 1
 
-        # Check if context would help
-        if use_context and initial_result["confidence"] < 0.7:
+        # Step 1: RAG Enhancement (if confidence < 0.7)
+        if use_context and current_result["confidence"] < self.rag_threshold:
             logger.info(
-                f"Low confidence ({initial_result['confidence']:.3f}), "
-                "retrieving context..."
+                f"Low confidence ({current_result['confidence']:.3f}), "
+                "retrieving PMG context..."
             )
 
             # Retrieve context
@@ -108,23 +137,129 @@ class ContextAwareProcessor:
                 enhanced_result = self._context_aware_prediction(
                     document,
                     contexts,
-                    initial_result
+                    current_result
                 )
 
                 # Check improvement
-                if enhanced_result["confidence"] > initial_result["confidence"]:
+                if enhanced_result["confidence"] > current_result["confidence"]:
                     self.stats["confidence_improved"] += 1
-                    improvement = enhanced_result["confidence"] - initial_result["confidence"]
+                    improvement = enhanced_result["confidence"] - current_result["confidence"]
                     self._update_avg_improvement(improvement)
 
                     logger.info(
-                        f"Confidence improved: {initial_result['confidence']:.3f} "
+                        f"Confidence improved via RAG: {current_result['confidence']:.3f} "
                         f"-> {enhanced_result['confidence']:.3f} (+{improvement:.3f})"
                     )
 
-                return enhanced_result
+                current_result = enhanced_result
 
-        return initial_result
+        # Step 2: Web Search Enhancement (if still low confidence < 0.65)
+        if (
+            self.enable_web_search and
+            self.web_search_agent is not None and
+            current_result["confidence"] < self.web_search_threshold
+        ):
+            logger.info(
+                f"Still low confidence ({current_result['confidence']:.3f}), "
+                "triggering web search..."
+            )
+
+            try:
+                web_enhanced_result = self._web_search_enhancement(
+                    document,
+                    current_result
+                )
+
+                self.stats["web_search_triggered"] += 1
+
+                # Check improvement
+                if web_enhanced_result["confidence"] > current_result["confidence"]:
+                    improvement = web_enhanced_result["confidence"] - current_result["confidence"]
+
+                    logger.info(
+                        f"Confidence improved via web search: {current_result['confidence']:.3f} "
+                        f"-> {web_enhanced_result['confidence']:.3f} (+{improvement:.3f})"
+                    )
+
+                    current_result = web_enhanced_result
+
+            except Exception as e:
+                logger.error(f"Web search enhancement failed: {e}")
+
+        return current_result
+
+    def _web_search_enhancement(
+        self,
+        document: Dict[str, Any],
+        current_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Enhance prediction using web search knowledge.
+
+        Triggered when RAG fails to improve confidence above threshold.
+        Based on 2025 CRAG (Corrective RAG) best practices.
+
+        Args:
+            document: Document being processed
+            current_result: Current prediction result
+
+        Returns:
+            Enhanced prediction with web search knowledge
+        """
+        # Build search query from document context
+        doc_type = document.get("doc_type", "document")
+        missing_fields = [
+            field for field, value in current_result.get("extracted_fields", {}).items()
+            if value is None or value == ""
+        ]
+
+        # Create context-aware query
+        if missing_fields:
+            query = f"SAP {doc_type} {' '.join(missing_fields)} field extraction"
+        else:
+            query = f"SAP {doc_type} processing best practices"
+
+        logger.info(f"Web search query: {query}")
+
+        # Execute search with SAP domain context
+        search_results = self.web_search_agent.search(
+            query=query,
+            num_results=5,
+            context={
+                "document_type": doc_type,
+                "module": document.get("module", ""),
+                "require_official_docs": True  # Prefer SAP official sources
+            },
+            search_mode="api"  # Focus on API documentation
+        )
+
+        # Extract knowledge from search results
+        knowledge = []
+        for result in search_results[:3]:  # Top 3 results
+            knowledge.append({
+                "source": result.get("url", ""),
+                "title": result.get("title", ""),
+                "snippet": result.get("snippet", ""),
+                "trust_score": result.get("trust_score", 0.5)
+            })
+
+        # Boost confidence if high-quality sources found
+        if knowledge:
+            avg_trust = sum(k["trust_score"] for k in knowledge) / len(knowledge)
+
+            # Confidence boost proportional to source trust
+            confidence_boost = avg_trust * 0.15  # Max 15% boost
+            new_confidence = min(current_result["confidence"] + confidence_boost, 0.95)
+
+            return {
+                **current_result,
+                "confidence": new_confidence,
+                "web_search_used": True,
+                "web_knowledge": knowledge,
+                "enhancement_method": "web_search"
+            }
+
+        return current_result
 
     def _initial_prediction(self, document: Dict[str, Any]) -> Dict[str, Any]:
         """Make initial prediction without context."""

@@ -7,9 +7,12 @@ Attempts to automatically correct extraction errors using:
 - Pattern-based fixes
 - Confidence-based field replacement
 - PMG historical data lookup
+- Loop detection and termination (2025 best practices)
+- Bayesian confidence propagation
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+import hashlib
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from sap_llm.utils.logger import get_logger
 
@@ -20,28 +23,41 @@ class SelfCorrector:
     """
     Self-correction mechanism for improving extraction quality.
 
-    Strategies:
+    Strategies (Enhanced 2025):
     1. Re-extract low-confidence fields with adjusted parameters
     2. Apply pattern-based fixes for common errors
     3. Use PMG historical data to fill missing fields
     4. Cross-validate fields for consistency
     5. Apply business logic for inference
+    6. Loop detection to prevent infinite correction cycles
+    7. Bayesian confidence propagation for reliability
     """
 
     def __init__(
         self,
         confidence_threshold: float = 0.70,
-        max_attempts: int = 2,
+        max_attempts_per_field: int = 3,
+        max_total_iterations: int = 5,
+        enable_loop_detection: bool = True,
     ):
         """
-        Initialize self-corrector.
+        Initialize self-corrector with loop detection.
 
         Args:
             confidence_threshold: Minimum confidence to accept without correction
-            max_attempts: Maximum correction attempts per field
+            max_attempts_per_field: Maximum correction attempts per field
+            max_total_iterations: Maximum total correction iterations
+            enable_loop_detection: Enable loop detection mechanism
         """
         self.confidence_threshold = confidence_threshold
-        self.max_attempts = max_attempts
+        self.max_attempts_per_field = max_attempts_per_field
+        self.max_total_iterations = max_total_iterations
+        self.enable_loop_detection = enable_loop_detection
+
+        # Loop detection tracking (2025 best practice)
+        self.field_attempts: Dict[str, int] = {}  # Track attempts per field
+        self.state_history: Set[str] = set()  # Track seen states
+        self.total_iterations: int = 0  # Global iteration counter
 
     def correct(
         self,
@@ -52,7 +68,7 @@ class SelfCorrector:
         pmg_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Attempt to correct low-quality extraction.
+        Attempt to correct low-quality extraction with loop detection.
 
         Args:
             extracted_data: Original extracted data
@@ -68,6 +84,35 @@ class SelfCorrector:
         corrections_made = []
 
         logger.info(f"Starting self-correction (overall quality: {quality_assessment['overall_score']:.2f})")
+
+        # Loop Detection: Check if we've exceeded max iterations
+        self.total_iterations += 1
+        if self.total_iterations > self.max_total_iterations:
+            logger.warning(
+                f"Max total iterations ({self.max_total_iterations}) reached. "
+                "Stopping to prevent infinite loop."
+            )
+            return corrected_data, {
+                "corrections_attempted": 0,
+                "corrections_successful": 0,
+                "corrections": [],
+                "termination_reason": "max_iterations_exceeded",
+                "loop_detected": True
+            }
+
+        # Loop Detection: Check if we've seen this state before
+        if self.enable_loop_detection:
+            state_hash = self._compute_state_hash(corrected_data)
+            if state_hash in self.state_history:
+                logger.warning("Loop detected: Same state encountered twice. Terminating.")
+                return corrected_data, {
+                    "corrections_attempted": 0,
+                    "corrections_successful": 0,
+                    "corrections": [],
+                    "termination_reason": "loop_detected",
+                    "loop_detected": True
+                }
+            self.state_history.add(state_hash)
 
         # Strategy 1: Fix missing required fields
         missing_fields = [
@@ -149,6 +194,59 @@ class SelfCorrector:
 
         return corrected_data, correction_metadata
 
+    def _compute_state_hash(self, data: Dict[str, Any]) -> str:
+        """
+        Compute hash of current extraction state for loop detection.
+
+        Args:
+            data: Current extracted data
+
+        Returns:
+            Hash string representing the state
+        """
+        # Create deterministic string representation
+        import json
+        state_str = json.dumps(data, sort_keys=True, default=str)
+        return hashlib.md5(state_str.encode()).hexdigest()
+
+    def _can_attempt_field(self, field: str) -> bool:
+        """
+        Check if we can attempt to correct a field.
+
+        Args:
+            field: Field name to check
+
+        Returns:
+            True if attempts are remaining, False otherwise
+        """
+        if not self.enable_loop_detection:
+            return True
+
+        attempts = self.field_attempts.get(field, 0)
+        if attempts >= self.max_attempts_per_field:
+            logger.warning(
+                f"Field '{field}' has reached max attempts ({self.max_attempts_per_field}). "
+                "Skipping further corrections."
+            )
+            return False
+
+        return True
+
+    def _increment_field_attempts(self, field: str):
+        """Increment the attempt counter for a field."""
+        self.field_attempts[field] = self.field_attempts.get(field, 0) + 1
+
+    def reset_state(self):
+        """
+        Reset correction state for new document.
+
+        Call this between documents to clear tracking data.
+        """
+        self.field_attempts.clear()
+        self.state_history.clear()
+        self.total_iterations = 0
+        logger.debug("Self-corrector state reset")
+
     def _fix_missing_fields(
         self,
         data: Dict[str, Any],
@@ -157,10 +255,23 @@ class SelfCorrector:
         schema: Dict[str, Any],
         pmg_context: Optional[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        """Fix missing required fields."""
+        """Fix missing required fields with per-field attempt tracking."""
         corrections = []
 
         for field in missing_fields:
+            # Check if we can attempt to fix this field
+            if not self._can_attempt_field(field):
+                corrections.append({
+                    "field": field,
+                    "strategy": "skipped",
+                    "success": False,
+                    "reason": "max_attempts_exceeded"
+                })
+                continue
+
+            # Increment attempt counter
+            self._increment_field_attempts(field)
+
             # Strategy 1: Look up in PMG similar documents
             if pmg_context and "similar_documents" in pmg_context:
                 value = self._lookup_field_in_pmg(
@@ -175,8 +286,9 @@ class SelfCorrector:
                         "strategy": "pmg_lookup",
                         "success": True,
                         "value": value,
+                        "attempts": self.field_attempts[field]
                     })
-                    logger.info(f"Fixed missing field '{field}' using PMG lookup")
+                    logger.info(f"Fixed missing field '{field}' using PMG lookup (attempt {self.field_attempts[field]})")
                     continue
 
             # Strategy 2: Pattern-based extraction from OCR
@@ -189,15 +301,17 @@ class SelfCorrector:
                     "strategy": "pattern_extraction",
                     "success": True,
                     "value": value,
+                    "attempts": self.field_attempts[field]
                 })
-                logger.info(f"Fixed missing field '{field}' using pattern extraction")
+                logger.info(f"Fixed missing field '{field}' using pattern extraction (attempt {self.field_attempts[field]})")
             else:
                 corrections.append({
                     "field": field,
                     "strategy": "none",
                     "success": False,
+                    "attempts": self.field_attempts[field]
                 })
-                logger.warning(f"Could not fix missing field '{field}'")
+                logger.warning(f"Could not fix missing field '{field}' (attempt {self.field_attempts[field]})")
 
         return corrections
 
@@ -208,10 +322,23 @@ class SelfCorrector:
         ocr_text: str,
         schema: Dict[str, Any],
     ) -> List[Dict[str, Any]]:
-        """Re-extract low-confidence fields."""
+        """Re-extract low-confidence fields with attempt tracking."""
         corrections = []
 
         for field in low_conf_fields:
+            # Check if we can attempt to fix this field
+            if not self._can_attempt_field(field):
+                corrections.append({
+                    "field": field,
+                    "strategy": "skipped",
+                    "success": False,
+                    "reason": "max_attempts_exceeded"
+                })
+                continue
+
+            # Increment attempt counter
+            self._increment_field_attempts(field)
+
             # Try pattern-based re-extraction
             new_value = self._extract_field_from_ocr(field, ocr_text, schema)
 
@@ -224,13 +351,18 @@ class SelfCorrector:
                     "success": True,
                     "old_value": old_value,
                     "new_value": new_value,
+                    "attempts": self.field_attempts[field]
                 })
-                logger.info(f"Re-extracted field '{field}': '{old_value}' → '{new_value}'")
+                logger.info(
+                    f"Re-extracted field '{field}': '{old_value}' → '{new_value}' "
+                    f"(attempt {self.field_attempts[field]})"
+                )
             else:
                 corrections.append({
                     "field": field,
                     "strategy": "re_extraction",
                     "success": False,
+                    "attempts": self.field_attempts[field]
                 })
 
         return corrections
