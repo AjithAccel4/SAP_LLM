@@ -1,0 +1,85 @@
+{
+  "enabled": true,
+  "offline_mode": false,
+  "providers": {
+    "serpapi": {
+      "enabled": true,
+      "api_key": "YOUR_SERPAPI_KEY_HERE"
+    },
+    "brave": {
+      "enabled": true,
+      "api_key": "YOUR_BRAVE_KEY_HERE"
+    },
+    "google": {
+      "enabled": false,
+      "api_key": "YOUR_GOOGLE_KEY_HERE",
+      "cx": "YOUR_CUSTOM_SEARCH_ENGINE_ID"
+    },
+    "bing": {
+      "enabled": false,
+      "api_key": "YOUR_BING_KEY_HERE"
+    },
+    "tavily": {
+      "enabled": false,
+      "api_key": "YOUR_TAVILY_KEY_HERE"
+    },
+    "duckduckgo": {
+      "enabled": true
+    }
+  },
+  "provider_priority": [
+    "serpapi",
+    "brave",
+    "tavily",
+    "google",
+    "bing",
+    "duckduckgo"
+  ],
+  "rate_limits": {
+    "serpapi": 100,
+    "serpapi_daily": 10000,
+    "brave": 60,
+    "brave_daily": 2000,
+    "google": 100,
+    "google_daily": 10000,
+    "bing": 100,
+    "bing_daily": 10000,
+    "tavily": 60,
+    "tavily_daily": 1000,
+    "duckduckgo": 30,
+    "duckduckgo_daily": 1000
+  },
+  "cache": {
+    "enabled": true,
+    "ttl": 86400,
+    "host": "localhost",
+    "port": 6379,
+    "db": 0,
+    "password": null,
+    "disk_cache_dir": "/tmp/sap_llm_search_cache",
+    "max_disk_cache_size_mb": 1000
+  },
+  "semantic_ranking": {
+    "model_name": "all-MiniLM-L6-v2",
+    "use_gpu": false,
+    "batch_size": 32
+  },
+  "sap_validator": {
+    "min_trust_score": 0.5,
+    "freshness_weight": 0.1,
+    "require_https": true
+  },
+  "knowledge_extractor": {
+    "fetch_full_content": false,
+    "max_content_length": 10000
+  },
+  "trusted_domains": [
+    "sap.com",
+    "help.sap.com",
+    "api.sap.com",
+    "developers.sap.com",
+    "community.sap.com"
+  ],
+  "blocked_domains": [],
+  "min_relevance_score": 0.5
+}
