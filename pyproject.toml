@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
+requires = ["setuptools==69.0.3", "wheel==0.42.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,7 @@ name = "sap-llm"
 version = "1.0.0"
 description = "100% Autonomous Document Processing System for SAP - Zero 3rd Party LLM Dependencies"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9,<3.12"
 license = {text = "Proprietary"}
 authors = [
     {name = "QorSync AI Team", email = "ai@qorsync.com"}
@@ -23,116 +23,235 @@ keywords = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
 dependencies = [
-    # Core ML frameworks
-    "torch>=2.1.0",
-    "transformers>=4.35.0",
-    "accelerate>=0.25.0",
-    "datasets>=2.15.0",
-    "evaluate>=0.4.1",
+    # Core ML frameworks (pinned to exact versions for reproducibility)
+    "torch==2.1.0",
+    "transformers==4.35.2",
+    "accelerate==0.25.0",
+    "datasets==2.15.0",
+    "evaluate==0.4.1",
 
     # Deep learning optimization
-    "deepspeed>=0.12.0",
-    "bitsandbytes>=0.41.0",
-    "peft>=0.7.0",
-    "optimum>=1.15.0",
+    "deepspeed==0.12.6",
+    "bitsandbytes==0.41.3",
+    "peft==0.7.1",
+    "optimum==1.15.0",
 
     # Document processing
-    "pdf2image>=1.16.3",
-    "pytesseract>=0.3.10",
-    "opencv-python>=4.8.1",
-    "pillow>=10.1.0",
-    "layoutparser>=0.3.4",
+    "pdf2image==1.16.3",
+    "pytesseract==0.3.10",
+    "opencv-python==4.8.1.78",
+    "pillow==10.1.0",
+    "layoutparser==0.3.4",
 
     # OCR engines
-    "easyocr>=1.7.0",
+    "easyocr==1.7.0",
 
     # NLP utilities
-    "sentence-transformers>=2.2.2",
-    "spacy>=3.7.0",
+    "sentence-transformers==2.2.2",
+    "spacy==3.7.2",
 
     # Graph databases
-    "gremlinpython>=3.7.0",
-    "neo4j>=5.14.0",
-    "networkx>=3.2.0",
+    "gremlinpython==3.7.0",
+    "neo4j==5.14.1",
+    "networkx==3.2.1",
 
     # Databases
-    "redis>=5.0.1",
-    "pymongo>=4.6.0",
-    "motor>=3.3.2",
+    "redis==5.0.1",
+    "pymongo==4.6.1",
+    "motor==3.3.2",
 
     # Azure SDKs
-    "azure-cosmos>=4.5.1",
-    "azure-storage-blob>=12.19.0",
-    "azure-servicebus>=7.11.4",
-    "azure-identity>=1.15.0",
+    "azure-cosmos==4.5.1",
+    "azure-storage-blob==12.19.0",
+    "azure-servicebus==7.11.4",
+    "azure-identity==1.15.0",
 
     # API frameworks
-    "fastapi>=0.105.0",
-    "uvicorn[standard]>=0.25.0",
-    "pydantic>=2.5.0",
-    "pydantic-settings>=2.1.0",
+    "fastapi==0.105.0",
+    "uvicorn[standard]==0.25.0",
+    "pydantic==2.5.2",
+    "pydantic-settings==2.1.0",
 
     # Async utilities
-    "httpx>=0.25.2",
-    "aiohttp>=3.9.1",
-    "aiofiles>=23.2.1",
+    "httpx==0.25.2",
+    "aiohttp==3.9.1",
+    "aiofiles==23.2.1",
 
     # Orchestration
-    "dapr>=1.12.0",
-    "kafka-python>=2.0.2",
+    "dapr==1.12.0",
+    "kafka-python==2.0.2",
+    "kubernetes==28.1.0",
 
     # Cryptography
-    "cryptography>=41.0.7",
+    "cryptography==41.0.7",
 
     # Data validation
-    "jsonschema>=4.20.0",
-    "pyyaml>=6.0.1",
+    "jsonschema==4.20.0",
+    "pyyaml==6.0.1",
 
     # Monitoring & observability
-    "prometheus-client>=0.19.0",
-    "opentelemetry-api>=1.21.0",
-    "opentelemetry-sdk>=1.21.0",
+    "prometheus-client==0.19.0",
+    "opentelemetry-api==1.21.0",
+    "opentelemetry-sdk==1.21.0",
 
     # Utilities
-    "python-dotenv>=1.0.0",
-    "rich>=13.7.0",
-    "click>=8.1.7",
-    "tqdm>=4.66.1",
-    "numpy>=1.24.0",
-    "pandas>=2.1.4",
-    "scikit-learn>=1.3.2",
+    "python-dotenv==1.0.0",
+    "rich==13.7.0",
+    "click==8.1.7",
+    "tqdm==4.66.1",
+    "numpy==1.26.2",
+    "pandas==2.1.4",
+    "scikit-learn==1.3.2",
 
     # Clustering
-    "hdbscan>=0.8.33",
-    "faiss-cpu>=1.7.4",
+    "hdbscan==0.8.33",
+    "faiss-cpu==1.7.4",
+
+    # ONNX Runtime
+    "onnxruntime==1.16.3",
+
+    # Data pipeline dependencies
+    "boto3==1.34.18",
+    "beautifulsoup4==4.12.2",
+    "reportlab==4.0.7",
+    "faker==22.0.0",
+    "albumentations==1.3.1",
+    "pyspark==3.5.0",
+    "psycopg2-binary==2.9.9",
+
+    # Video processing
+    "scenedetect==0.6.3",
+    "opencv-contrib-python==4.8.1.78",
+    "moviepy==1.0.3",
+
+    # Audio processing
+    "openai-whisper==20231117",
+    "librosa==0.10.1",
+    "soundfile==0.12.1",
+    "pydub==0.25.1",
+
+    # Advanced table extraction
+    "timm==0.9.12",
+
+    # Speaker diarization
+    "pyannote.audio==3.1.1",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.3",
-    "pytest-asyncio>=0.21.1",
-    "pytest-cov>=4.1.0",
-    "pytest-mock>=3.12.0",
-    "black>=23.12.0",
-    "ruff>=0.1.8",
-    "mypy>=1.7.1",
-    "pre-commit>=3.6.0",
-    "ipython>=8.18.1",
-    "jupyter>=1.0.0",
+    # Code formatting and linting
+    "black==23.12.1",
+    "ruff==0.1.9",
+    "isort==5.13.2",
+    "autopep8==2.0.4",
+
+    # Type checking
+    "mypy==1.7.1",
+    "types-PyYAML==6.0.12.12",
+    "types-redis==4.6.0.11",
+    "types-requests==2.31.0.20231231",
+
+    # Testing frameworks
+    "pytest==7.4.3",
+    "pytest-cov==4.1.0",
+    "pytest-mock==3.12.0",
+    "pytest-asyncio==0.21.1",
+    "pytest-xdist==3.5.0",
+    "pytest-timeout==2.2.0",
+    "pytest-benchmark==4.0.0",
+
+    # Documentation
+    "sphinx==7.2.6",
+    "sphinx-rtd-theme==2.0.0",
+    "sphinx-autodoc-typehints==1.25.2",
+    "myst-parser==2.0.0",
+    "pdoc==14.3.0",
+
+    # Code quality and security
+    "bandit==1.7.6",
+    "safety==3.0.1",
+    "pip-audit==2.6.3",
+    "pylint==3.0.3",
+
+    # Pre-commit hooks
+    "pre-commit==3.6.0",
+
+    # Debugging and profiling
+    "ipdb==0.13.13",
+    "ipython==8.19.0",
+    "memory-profiler==0.61.0",
+    "py-spy==0.3.14",
+    "line-profiler==4.1.1",
+
+    # Development utilities
+    "watchdog==3.0.0",
+    "ptpython==3.0.25",
+
+    # API development tools
+    "httpie==3.2.2",
+    "locust==2.20.0",
+
+    # Jupyter notebook support
+    "jupyter==1.0.0",
+    "jupyterlab==4.0.10",
+    "notebook==7.0.6",
+    "ipywidgets==8.1.1",
+
+    # Git hooks
+    "commitizen==3.13.0",
+]
+
+test = [
+    # Core testing framework
+    "pytest==7.4.3",
+    "pytest-cov==4.1.0",
+    "pytest-mock==3.12.0",
+    "pytest-asyncio==0.21.1",
+    "pytest-xdist==3.5.0",
+    "pytest-timeout==2.2.0",
+    "pytest-benchmark==4.0.0",
+
+    # Additional pytest plugins
+    "pytest-env==1.1.3",
+    "pytest-html==4.1.1",
+    "pytest-json-report==1.5.0",
+    "pytest-repeat==0.9.3",
+    "pytest-randomly==3.15.0",
+
+    # Test data and mocking
+    "factory-boy==3.3.0",
+    "responses==0.24.1",
+    "requests-mock==1.11.0",
+    "freezegun==1.4.0",
+    "hypothesis==6.92.2",
+
+    # API testing
+    "aioresponses==0.7.6",
+
+    # Database testing
+    "fakeredis==2.20.1",
+    "mongomock==4.1.2",
+    "pytest-mongodb==3.0.0",
+
+    # ML testing utilities
+    "torchmetrics==1.2.1",
+
+    # Coverage
+    "coverage[toml]==7.4.0",
 ]
 
 gpu = [
-    "faiss-gpu>=1.7.4",
-    "onnxruntime-gpu>=1.16.3",
+    "onnxruntime-gpu==1.16.3",
 ]
 
-all = ["sap-llm[dev,gpu]"]
+all = ["sap-llm[dev,test,gpu]"]
 
 [project.scripts]
 sap-llm = "sap_llm.cli:main"
@@ -152,7 +271,7 @@ sap_llm = ["**/*.json", "**/*.yaml", "**/*.yml"]
 
 [tool.black]
 line-length = 100
-target-version = ['py310', 'py311']
+target-version = ['py39', 'py310', 'py311']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -164,9 +283,18 @@ exclude = '''
 )/
 '''
 
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py39"
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -174,6 +302,7 @@ select = [
     "I",   # isort
     "C",   # flake8-comprehensions
     "B",   # flake8-bugbear
+    "UP",  # pyupgrade
 ]
 ignore = [
     "E501",  # line too long (handled by black)
@@ -185,28 +314,43 @@ ignore = [
 "__init__.py" = ["F401"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
-disallow_untyped_calls = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
-warn_unreachable = true
 strict_equality = true
+show_error_codes = true
+show_column_numbers = true
+
+[[tool.mypy.overrides]]
+module = [
+    "torch.*",
+    "transformers.*",
+    "deepspeed.*",
+    "detectron2.*",
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=sap_llm --cov-report=term-missing --cov-report=html"
+addopts = "-ra -q --strict-markers --cov=sap_llm --cov-report=term-missing --cov-report=html --cov-report=xml"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "gpu: marks tests requiring GPU",
+    "expensive: marks tests requiring significant resources",
+]
 
 [tool.coverage.run]
 source = ["sap_llm"]
@@ -216,8 +360,23 @@ omit = [
     "*/__pycache__/*",
     "*/venv/*",
 ]
+branch = true
 
 [tool.coverage.report]
 precision = 2
 show_missing = true
 skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "test_*.py"]
+skips = ["B101", "B601"]

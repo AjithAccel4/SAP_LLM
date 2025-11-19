@@ -1,0 +1,260 @@
+name: Dependency Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  pip-audit:
+    name: Pip Audit Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit==2.6.3
+
+      - name: Run pip-audit on production dependencies
+        id: pip-audit
+        run: |
+          pip-audit -r requirements.txt --desc --format json --output pip-audit-report.json || echo "VULNERABILITIES_FOUND=true" >> $GITHUB_ENV
+          pip-audit -r requirements.txt --desc
+        continue-on-error: true
+
+      - name: Upload pip-audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: pip-audit-report.json
+          retention-days: 30
+
+      - name: Comment PR with pip-audit results
+        if: github.event_name == 'pull_request' && env.VULNERABILITIES_FOUND == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('pip-audit-report.json', 'utf8'));
+
+            let comment = '## 🔒 Dependency Security Scan Results\n\n';
+            comment += '### ⚠️ Vulnerabilities Found\n\n';
+
+            if (report.dependencies && report.dependencies.length > 0) {
+              for (const dep of report.dependencies) {
+                if (dep.vulns && dep.vulns.length > 0) {
+                  comment += `#### ${dep.name} ${dep.version}\n\n`;
+                  for (const vuln of dep.vulns) {
+                    comment += `- **${vuln.id}**: ${vuln.description}\n`;
+                    comment += `  - Severity: ${vuln.severity || 'Unknown'}\n`;
+                    comment += `  - Fixed in: ${vuln.fix_versions ? vuln.fix_versions.join(', ') : 'No fix available'}\n\n`;
+                  }
+                }
+              }
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  safety-scan:
+    name: Safety Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Safety
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety==3.0.1
+
+      - name: Run Safety check
+        id: safety
+        run: |
+          safety check -r requirements.txt --json --output safety-report.json || echo "VULNERABILITIES_FOUND=true" >> $GITHUB_ENV
+          safety check -r requirements.txt --full-report
+        continue-on-error: true
+
+      - name: Upload Safety report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-report
+          path: safety-report.json
+          retention-days: 30
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+
+  verify-dependencies:
+    name: Verify Dependencies
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-lock.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+        timeout-minutes: 30
+
+      - name: Verify dependency installation
+        run: |
+          python -c "import torch; print(f'PyTorch version: {torch.__version__}')"
+          python -c "import transformers; print(f'Transformers version: {transformers.__version__}')"
+          python -c "import fastapi; print(f'FastAPI version: {fastapi.__version__}')"
+
+      - name: Run dependency verification script
+        run: |
+          python scripts/verify_dependencies.py
+
+  license-scan:
+    name: License Compliance Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install pip-licenses
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-licenses==4.3.3
+
+      - name: Generate license report
+        run: |
+          # Install dependencies without GPU packages to save time
+          pip install -r requirements.txt --no-deps || true
+          pip-licenses --format=markdown --output-file=licenses.md
+          pip-licenses --format=json --output-file=licenses.json
+        continue-on-error: true
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: |
+            licenses.md
+            licenses.json
+          retention-days: 30
+
+      - name: Check for incompatible licenses
+        run: |
+          pip-licenses --fail-on GPL-2.0 --fail-on GPL-3.0 --fail-on AGPL-3.0
+        continue-on-error: true
+
+  create-security-issue:
+    name: Create Security Issue
+    runs-on: ubuntu-latest
+    needs: [pip-audit, safety-scan]
+    if: failure() && github.event_name == 'schedule'
+
+    steps:
+      - name: Create issue for vulnerabilities
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🔒 Security: Dependency Vulnerabilities Detected';
+            const body = `
+            ## Automated Security Alert
+
+            The daily dependency security scan has detected vulnerabilities in our dependencies.
+
+            **Scan Date:** ${new Date().toISOString().split('T')[0]}
+
+            **Action Required:**
+            1. Review the workflow run logs: ${context.payload.repository.html_url}/actions/runs/${context.runId}
+            2. Download and review the detailed reports from the workflow artifacts
+            3. Update vulnerable dependencies to patched versions
+            4. Test the application with updated dependencies
+            5. Create a PR with the updates
+
+            **Priority:** High
+            **Labels:** security, dependencies, automated
+
+            ---
+            *This issue was automatically created by the dependency-scan workflow.*
+            `;
+
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'dependencies', 'automated']
+            });
