@@ -30,6 +30,11 @@ from sap_llm.web_search.search_providers import (
     TavilySearchProvider,
 )
 from sap_llm.web_search.semantic_ranker import SemanticRanker
+from sap_llm.web_search.deduplication import (
+    deduplicate_results,
+    Deduplicator,
+    find_duplicates,
+)
 
 __all__ = [
     # Core
@@ -60,4 +65,8 @@ __all__ = [
     "RoutingEnhancer",
     "QualityCheckEnhancer",
     "KnowledgeBaseUpdater",
+    # Deduplication
+    "deduplicate_results",
+    "Deduplicator",
+    "find_duplicates",
 ]
