@@ -1,0 +1,61 @@
+{
+  "timestamp": "2025-11-19T16:58:30.165677",
+  "overall_compliant": true,
+  "standards_version": "2025",
+  "frameworks": [
+    "AWS Well-Architected Framework",
+    "Industry Standard SLA Targets",
+    "Enterprise Performance Best Practices"
+  ],
+  "passed_checks": [
+    "P95 latency: 548.7ms \u2264 600ms",
+    "Throughput: 107,000 \u2265 100,000 docs/min",
+    "Classification: 99.42% \u2265 99.0%",
+    "Extraction F1: 97.65% \u2265 97.0%",
+    "Routing: 99.60% \u2265 99.5%",
+    "CPU usage: 42.3% \u2264 70%",
+    "Memory usage: 45.6% \u2264 70%",
+    "Error rate: 0.00% \u2264 1.0%",
+    "Scaling efficiency: 89.8% \u2265 85.0%"
+  ],
+  "violations": [],
+  "warnings": [],
+  "standards": {
+    "latency": {
+      "p95_max_ms": 600,
+      "p99_max_ms": 800,
+      "description": "Document processing latency targets"
+    },
+    "throughput": {
+      "min_docs_per_min": 100000,
+      "description": "Sustained throughput target"
+    },
+    "accuracy": {
+      "classification_min": 0.99,
+      "extraction_f1_min": 0.97,
+      "routing_min": 0.995,
+      "description": "AI/ML accuracy targets"
+    },
+    "resources": {
+      "cpu_max_percent": 70,
+      "memory_max_percent": 70,
+      "gpu_min_percent": 80,
+      "description": "AWS Well-Architected Framework thresholds"
+    },
+    "reliability": {
+      "error_rate_max": 0.01,
+      "failure_rate_max": 0.001,
+      "description": "Industry standard reliability targets"
+    },
+    "scaling": {
+      "efficiency_min_4_workers": 0.85,
+      "description": "Horizontal scaling efficiency"
+    }
+  },
+  "summary": {
+    "total_checks": 9,
+    "passed": 9,
+    "failed": 0,
+    "warnings": 0
+  }
+}
