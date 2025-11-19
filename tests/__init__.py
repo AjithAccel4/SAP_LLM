@@ -1,5 +1,1 @@
-"""
-SAP_LLM Test Suite
-
-Comprehensive testing for all components of SAP_LLM system.
-"""
+"""Tests for SAP_LLM Continuous Learning Pipeline."""
