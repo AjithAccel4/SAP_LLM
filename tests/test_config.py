@@ -114,3 +114,46 @@ class TestConfig:
         # Pydantic models are mutable by default, but we can test that
         # critical values exist
         assert config.system.environment is not None
+
+    def test_cors_settings_import(self):
+        """Test that CORSSettings can be imported."""
+        from sap_llm.config import CORSSettings
+
+        assert CORSSettings is not None
+
+    def test_cors_settings_basic_functionality(self, monkeypatch):
+        """Test basic CORS settings functionality."""
+        from sap_llm.config import CORSSettings
+
+        # Test with valid HTTPS origins in production
+        monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "https://app.example.com,https://api.example.com")
+        monkeypatch.setenv("ENVIRONMENT", "production")
+
+        settings = CORSSettings()
+
+        assert len(settings.get_origins()) == 2
+        assert "https://app.example.com" in settings.get_origins()
+        assert settings.is_production()
+
+    def test_cors_production_validation(self, monkeypatch):
+        """Test CORS production validation."""
+        from sap_llm.config import CORSSettings
+
+        # Test that wildcard is rejected in production
+        monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "*")
+        monkeypatch.setenv("ENVIRONMENT", "production")
+
+        with pytest.raises(ValueError):
+            CORSSettings()
+
+    def test_cors_development_allows_localhost(self, monkeypatch):
+        """Test CORS allows localhost in development."""
+        from sap_llm.config import CORSSettings
+
+        monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+        monkeypatch.setenv("ENVIRONMENT", "development")
+
+        settings = CORSSettings()
+
+        assert "http://localhost:3000" in settings.get_origins()
+        assert not settings.is_production()
