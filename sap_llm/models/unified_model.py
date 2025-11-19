@@ -28,6 +28,14 @@ from sap_llm.models.vision_encoder import VisionEncoder
 from sap_llm.utils.logger import get_logger
 from sap_llm.utils.timer import Timer
 
+# Advanced self-correction system
+from sap_llm.correction import (
+    SelfCorrectionEngine,
+    ErrorPatternLearner,
+    EscalationManager,
+    CorrectionAnalytics,
+)
+
 logger = get_logger(__name__)
 
 
@@ -81,6 +89,22 @@ class UnifiedExtractorModel(nn.Module):
             max_attempts=2,
         )
         self.business_rule_validator = BusinessRuleValidator()
+
+        # Initialize advanced self-correction system
+        self.pattern_learner = ErrorPatternLearner(
+            storage_path=str(Path(__file__).parent.parent / "data" / "correction_patterns")
+        )
+        self.escalation_manager = EscalationManager(
+            pattern_learner=self.pattern_learner,
+            confidence_threshold=0.70,
+            max_auto_attempts=3
+        )
+        self.advanced_correction_engine = None  # Will be initialized when models are loaded
+        self.correction_analytics = CorrectionAnalytics(
+            pattern_learner=self.pattern_learner,
+            escalation_manager=self.escalation_manager,
+            storage_path=str(Path(__file__).parent.parent / "data" / "correction_analytics")
+        )
 
         # Load document types configuration
         self.doc_types_config = self._load_document_types_config(
@@ -175,13 +199,40 @@ class UnifiedExtractorModel(nn.Module):
                 max_length=re_config.max_length or 4096,
             )
 
+        # Initialize advanced correction engine now that models are loaded
+        self._initialize_advanced_correction_engine()
+
+    def _initialize_advanced_correction_engine(self):
+        """Initialize the advanced self-correction engine with loaded models."""
+        logger.info("Initializing advanced self-correction engine...")
+
+        self.advanced_correction_engine = SelfCorrectionEngine(
+            pmg=None,  # PMG will be provided at runtime in context
+            language_decoder=self.language_decoder,
+            vision_encoder=self.vision_encoder,
+            max_attempts=3,
+            confidence_threshold=0.80,
+            pattern_learner=self.pattern_learner
+        )
+
+        # Link analytics to correction engine
+        self.correction_analytics.correction_engine = self.advanced_correction_engine
+
+        logger.info("Advanced self-correction engine initialized")
+
     def set_vision_encoder(self, vision_encoder: VisionEncoder) -> None:
         """Set vision encoder component."""
         self.vision_encoder = vision_encoder
+        # Re-initialize correction engine if needed
+        if self.vision_encoder and self.language_decoder:
+            self._initialize_advanced_correction_engine()
 
     def set_language_decoder(self, language_decoder: LanguageDecoder) -> None:
         """Set language decoder component."""
         self.language_decoder = language_decoder
+        # Re-initialize correction engine if needed
+        if self.vision_encoder and self.language_decoder:
+            self._initialize_advanced_correction_engine()
 
     def set_reasoning_engine(self, reasoning_engine: ReasoningEngine) -> None:
         """Set reasoning engine component."""
@@ -396,36 +447,91 @@ class UnifiedExtractorModel(nn.Module):
                 result["quality_assessment"] = quality_assessment
                 result["quality_score"] = quality_assessment["overall_score"]
 
-                # ENHANCED: Self-Correction if quality is low
+                # ENHANCED: Advanced Self-Correction with Multi-Strategy Retry
                 if quality_assessment["overall_score"] < 0.90 and enable_self_correction:
                     logger.info(
                         f"Quality score {quality_assessment['overall_score']:.2f} below threshold, "
-                        "attempting self-correction"
+                        "attempting advanced self-correction"
                     )
 
-                    corrected_data, correction_metadata = self.self_corrector.correct(
-                        extracted_data,
-                        quality_assessment,
-                        ocr_text,
-                        schema,
-                        pmg_context,
-                    )
+                    # Use advanced correction engine if available, otherwise fallback to basic
+                    if self.advanced_correction_engine:
+                        # Prepare context for advanced correction
+                        correction_context = {
+                            "document": image,
+                            "document_id": str(hash(str(extracted_data))),  # Generate ID
+                            "document_type": doc_type,
+                            "ocr_text": ocr_text,
+                            "words": words,
+                            "boxes": boxes,
+                            "schema": schema,
+                            "vendor": extracted_data.get("vendor_name", {}).get("value"),
+                            "pmg": pmg_context,  # PMG context if available
+                        }
 
-                    result["extracted_data"] = corrected_data
-                    result["self_correction"] = correction_metadata
+                        # Run advanced self-correction
+                        corrected_result = self.advanced_correction_engine.correct_prediction(
+                            prediction=extracted_data,
+                            context=correction_context,
+                            enable_learning=True
+                        )
 
-                    # Re-check quality after correction
-                    quality_assessment = self.quality_checker.check_quality(
-                        corrected_data,
-                        schema,
-                        field_confidences,
-                    )
-                    result["quality_assessment_post_correction"] = quality_assessment
-                    result["quality_score"] = quality_assessment["overall_score"]
+                        # Extract corrected data and metadata
+                        correction_metadata = corrected_result.pop("correction_metadata", {})
+                        corrected_data = corrected_result
 
-                    logger.info(
-                        f"Post-correction quality: {quality_assessment['overall_score']:.2f}"
-                    )
+                        result["extracted_data"] = corrected_data
+                        result["advanced_self_correction"] = correction_metadata
+
+                        # Record analytics
+                        self.correction_analytics.record_correction_event(
+                            prediction=corrected_data,
+                            correction_metadata=correction_metadata,
+                            context=correction_context
+                        )
+
+                        # Re-check quality after correction
+                        quality_assessment = self.quality_checker.check_quality(
+                            corrected_data,
+                            schema,
+                            field_confidences,
+                        )
+                        result["quality_assessment_post_correction"] = quality_assessment
+                        result["quality_score"] = quality_assessment["overall_score"]
+
+                        logger.info(
+                            f"Post-correction quality: {quality_assessment['overall_score']:.2f}, "
+                            f"attempts: {correction_metadata.get('total_attempts', 0)}, "
+                            f"success: {correction_metadata.get('success', False)}"
+                        )
+
+                    else:
+                        # Fallback to basic self-corrector
+                        logger.warning("Advanced correction engine not available, using basic corrector")
+
+                        corrected_data, correction_metadata = self.self_corrector.correct(
+                            extracted_data,
+                            quality_assessment,
+                            ocr_text,
+                            schema,
+                            pmg_context,
+                        )
+
+                        result["extracted_data"] = corrected_data
+                        result["self_correction"] = correction_metadata
+
+                        # Re-check quality after correction
+                        quality_assessment = self.quality_checker.check_quality(
+                            corrected_data,
+                            schema,
+                            field_confidences,
+                        )
+                        result["quality_assessment_post_correction"] = quality_assessment
+                        result["quality_score"] = quality_assessment["overall_score"]
+
+                        logger.info(
+                            f"Post-correction quality: {quality_assessment['overall_score']:.2f}"
+                        )
 
                 # Stage 7: Validation - ENHANCED with comprehensive business rules
                 violations = self.business_rule_validator.validate(
@@ -472,6 +578,68 @@ class UnifiedExtractorModel(nn.Module):
 
         logger.warning(f"Unknown class index {class_idx}, returning OTHER")
         return "OTHER"
+
+    def get_correction_report(
+        self,
+        period_days: int = 7,
+        export_path: Optional[str] = None,
+        export_format: str = "json"
+    ) -> Dict[str, Any]:
+        """
+        Generate comprehensive correction analytics report.
+
+        Args:
+            period_days: Number of days to include in report
+            export_path: Optional path to export report
+            export_format: Export format (json, html)
+
+        Returns:
+            Correction analytics report
+        """
+        logger.info(f"Generating correction report for last {period_days} days")
+
+        report = self.correction_analytics.generate_correction_report(
+            period_days=period_days,
+            include_details=True
+        )
+
+        # Add escalation manager stats
+        if self.escalation_manager:
+            report["human_review"] = {
+                "pending_tasks": len(self.escalation_manager.get_pending_tasks()),
+                "stats": self.escalation_manager.get_escalation_stats()
+            }
+
+        # Add pattern learner stats
+        if self.pattern_learner:
+            report["pattern_learning"] = self.pattern_learner.get_strategy_effectiveness()
+
+        # Export if requested
+        if export_path:
+            self.correction_analytics.export_report(
+                report=report,
+                output_path=export_path,
+                format=export_format
+            )
+            logger.info(f"Report exported to {export_path}")
+
+        return report
+
+    def get_pending_human_reviews(self, priority: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get pending human review tasks.
+
+        Args:
+            priority: Optional priority filter (urgent, high, normal, low)
+
+        Returns:
+            List of pending review tasks
+        """
+        if not self.escalation_manager:
+            logger.warning("Escalation manager not initialized")
+            return []
+
+        return self.escalation_manager.get_pending_tasks(priority=priority)
 
     def save(self, output_dir: str) -> None:
         """Save all model components."""
