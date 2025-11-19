@@ -1,0 +1,398 @@
+{
+  "document_type": "PurchaseOrder",
+  "subtype": "Standard",
+  "api_version": "A_PurchaseOrder",
+  "description": "Standard Purchase Order mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "po_number": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Purchase Order Number"
+    },
+    "purchase_order_number": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Purchase Order Number (alternative field)"
+    },
+    "po_date": {
+      "sap_field": "PurchaseOrderDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Purchase Order Date"
+    },
+    "purchase_order_date": {
+      "sap_field": "PurchaseOrderDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Purchase Order Date (alternative field)"
+    },
+    "vendor_id": {
+      "sap_field": "Supplier",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Vendor/Supplier ID"
+    },
+    "vendor_number": {
+      "sap_field": "Supplier",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Vendor/Supplier Number"
+    },
+    "supplier": {
+      "sap_field": "Supplier",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Supplier"
+    },
+    "vendor_name": {
+      "sap_field": "SupplierName",
+      "data_type": "string",
+      "required": false,
+      "max_length": 80,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Vendor/Supplier Name"
+    },
+    "company_code": {
+      "sap_field": "CompanyCode",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Company Code"
+    },
+    "document_date": {
+      "sap_field": "DocumentDate",
+      "data_type": "date",
+      "required": false,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Document Date"
+    },
+    "purchasing_organization": {
+      "sap_field": "PurchasingOrganization",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Purchasing Organization"
+    },
+    "purchasing_group": {
+      "sap_field": "PurchasingGroup",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "pad_left:3:0"],
+      "validation": "^[A-Z0-9]{1,3}$",
+      "default": null,
+      "description": "Purchasing Group"
+    },
+    "po_type": {
+      "sap_field": "PurchaseOrderType",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z]{2,4}$",
+      "default": "NB",
+      "description": "Purchase Order Type"
+    },
+    "purchase_order_type": {
+      "sap_field": "PurchaseOrderType",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z]{2,4}$",
+      "default": "NB",
+      "description": "Purchase Order Type (alternative field)"
+    },
+    "currency": {
+      "sap_field": "DocumentCurrency",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "validate_iso_currency"],
+      "validation": "^[A-Z]{3}$",
+      "default": "USD",
+      "description": "Currency Code (ISO 4217)"
+    },
+    "document_currency": {
+      "sap_field": "DocumentCurrency",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "validate_iso_currency"],
+      "validation": "^[A-Z]{3}$",
+      "default": "USD",
+      "description": "Document Currency (alternative field)"
+    },
+    "total_amount": {
+      "sap_field": "TotalAmount",
+      "data_type": "decimal",
+      "required": false,
+      "transformations": ["parse_amount", "format_decimal:2"],
+      "validation": null,
+      "default": null,
+      "description": "Total Amount"
+    },
+    "net_amount": {
+      "sap_field": "NetAmount",
+      "data_type": "decimal",
+      "required": false,
+      "transformations": ["parse_amount", "format_decimal:2"],
+      "validation": null,
+      "default": null,
+      "description": "Net Amount"
+    },
+    "payment_terms": {
+      "sap_field": "PaymentTerms",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Payment Terms Key"
+    },
+    "incoterms": {
+      "sap_field": "IncotermsClassification",
+      "data_type": "string",
+      "required": false,
+      "max_length": 3,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z]{3}$",
+      "default": null,
+      "description": "Incoterms Classification"
+    },
+    "incoterms_location": {
+      "sap_field": "IncotermsLocation1",
+      "data_type": "string",
+      "required": false,
+      "max_length": 70,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Incoterms Location"
+    },
+    "delivery_date": {
+      "sap_field": "ScheduleLineDeliveryDate",
+      "data_type": "date",
+      "required": false,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Delivery Date"
+    },
+    "requested_delivery_date": {
+      "sap_field": "ScheduleLineDeliveryDate",
+      "data_type": "date",
+      "required": false,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Requested Delivery Date"
+    },
+    "plant": {
+      "sap_field": "Plant",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Plant"
+    },
+    "storage_location": {
+      "sap_field": "StorageLocation",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Storage Location"
+    },
+    "created_by": {
+      "sap_field": "CreatedByUser",
+      "data_type": "string",
+      "required": false,
+      "max_length": 12,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Created By User"
+    },
+    "created_on": {
+      "sap_field": "CreationDate",
+      "data_type": "date",
+      "required": false,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Creation Date"
+    }
+  },
+  "nested_mappings": {
+    "items": {
+      "sap_collection": "to_PurchaseOrderItem",
+      "mappings": {
+        "item_number": {
+          "sap_field": "PurchaseOrderItem",
+          "data_type": "string",
+          "required": true,
+          "max_length": 5,
+          "transformations": ["pad_left:5:0"],
+          "validation": null,
+          "default": null,
+          "description": "PO Item Number"
+        },
+        "material_number": {
+          "sap_field": "Material",
+          "data_type": "string",
+          "required": false,
+          "max_length": 40,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Material Number"
+        },
+        "material": {
+          "sap_field": "Material",
+          "data_type": "string",
+          "required": false,
+          "max_length": 40,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Material (alternative field)"
+        },
+        "description": {
+          "sap_field": "PurchaseOrderItemText",
+          "data_type": "string",
+          "required": false,
+          "max_length": 40,
+          "transformations": ["trim"],
+          "validation": null,
+          "default": null,
+          "description": "Item Description"
+        },
+        "short_text": {
+          "sap_field": "PurchaseOrderItemText",
+          "data_type": "string",
+          "required": false,
+          "max_length": 40,
+          "transformations": ["trim"],
+          "validation": null,
+          "default": null,
+          "description": "Short Text"
+        },
+        "quantity": {
+          "sap_field": "OrderQuantity",
+          "data_type": "decimal",
+          "required": true,
+          "transformations": ["parse_amount", "format_decimal:3"],
+          "validation": null,
+          "default": null,
+          "description": "Order Quantity"
+        },
+        "order_quantity": {
+          "sap_field": "OrderQuantity",
+          "data_type": "decimal",
+          "required": true,
+          "transformations": ["parse_amount", "format_decimal:3"],
+          "validation": null,
+          "default": null,
+          "description": "Order Quantity (alternative field)"
+        },
+        "unit_of_measure": {
+          "sap_field": "OrderPriceUnit",
+          "data_type": "string",
+          "required": false,
+          "max_length": 3,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": "EA",
+          "description": "Unit of Measure"
+        },
+        "uom": {
+          "sap_field": "OrderPriceUnit",
+          "data_type": "string",
+          "required": false,
+          "max_length": 3,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": "EA",
+          "description": "Unit of Measure (alternative field)"
+        },
+        "unit_price": {
+          "sap_field": "NetPriceAmount",
+          "data_type": "decimal",
+          "required": false,
+          "transformations": ["parse_amount", "format_decimal:2"],
+          "validation": null,
+          "default": null,
+          "description": "Unit Price"
+        },
+        "net_price": {
+          "sap_field": "NetPriceAmount",
+          "data_type": "decimal",
+          "required": false,
+          "transformations": ["parse_amount", "format_decimal:2"],
+          "validation": null,
+          "default": null,
+          "description": "Net Price"
+        },
+        "tax_code": {
+          "sap_field": "TaxCode",
+          "data_type": "string",
+          "required": false,
+          "max_length": 2,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Tax Code"
+        }
+      }
+    }
+  }
+}

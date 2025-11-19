@@ -1,0 +1,147 @@
+{
+  "document_type": "PaymentTerms",
+  "subtype": "Standard",
+  "api_version": "A_PaymentTerms",
+  "description": "Payment Terms mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "payment_terms": {
+      "sap_field": "PaymentTerms",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Payment Terms Key"
+    },
+    "payment_terms_key": {
+      "sap_field": "PaymentTerms",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Payment Terms Key (alternative field)"
+    },
+    "payment_terms_code": {
+      "sap_field": "PaymentTerms",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Payment Terms Code (alternative field)"
+    },
+    "description": {
+      "sap_field": "PaymentTermsDescription",
+      "data_type": "string",
+      "required": false,
+      "max_length": 50,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Payment Terms Description"
+    },
+    "payment_terms_name": {
+      "sap_field": "PaymentTermsDescription",
+      "data_type": "string",
+      "required": false,
+      "max_length": 50,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Payment Terms Name (alternative field)"
+    },
+    "cash_discount_1_days": {
+      "sap_field": "CashDiscount1Days",
+      "data_type": "integer",
+      "required": false,
+      "transformations": ["parse_integer"],
+      "validation": null,
+      "default": null,
+      "description": "Cash Discount 1 Days"
+    },
+    "cash_discount_1_percent": {
+      "sap_field": "CashDiscount1Percent",
+      "data_type": "decimal",
+      "required": false,
+      "transformations": ["parse_amount", "format_decimal:3"],
+      "validation": null,
+      "default": null,
+      "description": "Cash Discount 1 Percentage"
+    },
+    "cash_discount_2_days": {
+      "sap_field": "CashDiscount2Days",
+      "data_type": "integer",
+      "required": false,
+      "transformations": ["parse_integer"],
+      "validation": null,
+      "default": null,
+      "description": "Cash Discount 2 Days"
+    },
+    "cash_discount_2_percent": {
+      "sap_field": "CashDiscount2Percent",
+      "data_type": "decimal",
+      "required": false,
+      "transformations": ["parse_amount", "format_decimal:3"],
+      "validation": null,
+      "default": null,
+      "description": "Cash Discount 2 Percentage"
+    },
+    "net_payment_days": {
+      "sap_field": "NetPaymentDays",
+      "data_type": "integer",
+      "required": false,
+      "transformations": ["parse_integer"],
+      "validation": null,
+      "default": null,
+      "description": "Net Payment Days"
+    },
+    "due_date_days": {
+      "sap_field": "NetPaymentDays",
+      "data_type": "integer",
+      "required": false,
+      "transformations": ["parse_integer"],
+      "validation": null,
+      "default": null,
+      "description": "Due Date Days (alternative field)"
+    },
+    "payment_block": {
+      "sap_field": "PaymentBlockReason",
+      "data_type": "string",
+      "required": false,
+      "max_length": 1,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Payment Block Reason"
+    },
+    "baseline_date_calculation": {
+      "sap_field": "BaselineDateCalculationRule",
+      "data_type": "string",
+      "required": false,
+      "max_length": 2,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Baseline Date Calculation Rule"
+    },
+    "account_type": {
+      "sap_field": "AccountType",
+      "data_type": "string",
+      "required": false,
+      "max_length": 1,
+      "transformations": ["uppercase", "trim"],
+      "validation": "^[DK]$",
+      "default": "K",
+      "description": "Account Type (D=Customer, K=Vendor)"
+    }
+  }
+}

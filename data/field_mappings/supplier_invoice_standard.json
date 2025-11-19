@@ -1,0 +1,320 @@
+{
+  "document_type": "SupplierInvoice",
+  "subtype": "Standard",
+  "api_version": "A_SupplierInvoice",
+  "description": "Standard Supplier Invoice mapping for SAP S/4HANA OData API",
+  "config": {
+    "copy_unmapped": false,
+    "strict_validation": true,
+    "allow_partial": false
+  },
+  "mappings": {
+    "invoice_number": {
+      "sap_field": "SupplierInvoiceIDByInvcgParty",
+      "data_type": "string",
+      "required": true,
+      "max_length": 16,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Supplier Invoice Number"
+    },
+    "supplier_invoice_number": {
+      "sap_field": "SupplierInvoiceIDByInvcgParty",
+      "data_type": "string",
+      "required": true,
+      "max_length": 16,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Supplier Invoice Number (alternative field)"
+    },
+    "vendor_invoice_number": {
+      "sap_field": "SupplierInvoiceIDByInvcgParty",
+      "data_type": "string",
+      "required": true,
+      "max_length": 16,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Vendor Invoice Number"
+    },
+    "invoice_date": {
+      "sap_field": "DocumentDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Invoice Date"
+    },
+    "document_date": {
+      "sap_field": "DocumentDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Document Date (alternative field)"
+    },
+    "posting_date": {
+      "sap_field": "PostingDate",
+      "data_type": "date",
+      "required": true,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Posting Date"
+    },
+    "vendor_id": {
+      "sap_field": "InvoicingParty",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Vendor/Supplier ID"
+    },
+    "vendor_number": {
+      "sap_field": "InvoicingParty",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Vendor Number"
+    },
+    "supplier": {
+      "sap_field": "InvoicingParty",
+      "data_type": "string",
+      "required": true,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim", "pad_left:10:0"],
+      "validation": "^[A-Z0-9]{1,10}$",
+      "default": null,
+      "description": "Supplier"
+    },
+    "company_code": {
+      "sap_field": "CompanyCode",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["uppercase", "pad_left:4:0"],
+      "validation": "^[A-Z0-9]{1,4}$",
+      "default": null,
+      "description": "Company Code"
+    },
+    "currency": {
+      "sap_field": "DocumentCurrency",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "validate_iso_currency"],
+      "validation": "^[A-Z]{3}$",
+      "default": "USD",
+      "description": "Currency Code (ISO 4217)"
+    },
+    "document_currency": {
+      "sap_field": "DocumentCurrency",
+      "data_type": "string",
+      "required": true,
+      "max_length": 3,
+      "transformations": ["uppercase", "validate_iso_currency"],
+      "validation": "^[A-Z]{3}$",
+      "default": "USD",
+      "description": "Document Currency (alternative field)"
+    },
+    "total_amount": {
+      "sap_field": "InvoiceGrossAmount",
+      "data_type": "decimal",
+      "required": true,
+      "transformations": ["parse_amount", "format_decimal:2"],
+      "validation": null,
+      "default": null,
+      "description": "Total/Gross Amount"
+    },
+    "gross_amount": {
+      "sap_field": "InvoiceGrossAmount",
+      "data_type": "decimal",
+      "required": true,
+      "transformations": ["parse_amount", "format_decimal:2"],
+      "validation": null,
+      "default": null,
+      "description": "Gross Amount (alternative field)"
+    },
+    "tax_amount": {
+      "sap_field": "TaxAmount",
+      "data_type": "decimal",
+      "required": false,
+      "transformations": ["parse_amount", "format_decimal:2"],
+      "validation": null,
+      "default": null,
+      "description": "Tax Amount"
+    },
+    "purchase_order": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Purchase Order Number"
+    },
+    "po_number": {
+      "sap_field": "PurchaseOrder",
+      "data_type": "string",
+      "required": false,
+      "max_length": 10,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "PO Number (alternative field)"
+    },
+    "fiscal_year": {
+      "sap_field": "FiscalYear",
+      "data_type": "string",
+      "required": true,
+      "max_length": 4,
+      "transformations": ["trim"],
+      "validation": "^[0-9]{4}$",
+      "default": null,
+      "description": "Fiscal Year"
+    },
+    "payment_terms": {
+      "sap_field": "PaymentTerms",
+      "data_type": "string",
+      "required": false,
+      "max_length": 4,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Payment Terms Key"
+    },
+    "payment_method": {
+      "sap_field": "PaymentMethod",
+      "data_type": "string",
+      "required": false,
+      "max_length": 1,
+      "transformations": ["uppercase", "trim"],
+      "validation": null,
+      "default": null,
+      "description": "Payment Method"
+    },
+    "due_date": {
+      "sap_field": "DueCalculationBaseDate",
+      "data_type": "date",
+      "required": false,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Due/Baseline Date"
+    },
+    "baseline_date": {
+      "sap_field": "DueCalculationBaseDate",
+      "data_type": "date",
+      "required": false,
+      "transformations": ["parse_date", "format_date:YYYYMMDD"],
+      "validation": null,
+      "default": null,
+      "description": "Baseline Date (alternative field)"
+    },
+    "reference": {
+      "sap_field": "DocumentReferenceID",
+      "data_type": "string",
+      "required": false,
+      "max_length": 16,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Reference Document"
+    },
+    "header_text": {
+      "sap_field": "DocumentHeaderText",
+      "data_type": "string",
+      "required": false,
+      "max_length": 25,
+      "transformations": ["trim"],
+      "validation": null,
+      "default": null,
+      "description": "Header Text"
+    }
+  },
+  "nested_mappings": {
+    "items": {
+      "sap_collection": "to_SuplrInvcItemPurOrdRef",
+      "mappings": {
+        "item_number": {
+          "sap_field": "SupplierInvoiceItem",
+          "data_type": "string",
+          "required": true,
+          "max_length": 6,
+          "transformations": ["pad_left:6:0"],
+          "validation": null,
+          "default": null,
+          "description": "Invoice Item Number"
+        },
+        "purchase_order": {
+          "sap_field": "PurchaseOrder",
+          "data_type": "string",
+          "required": false,
+          "max_length": 10,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Purchase Order Number"
+        },
+        "po_item": {
+          "sap_field": "PurchaseOrderItem",
+          "data_type": "string",
+          "required": false,
+          "max_length": 5,
+          "transformations": ["pad_left:5:0"],
+          "validation": null,
+          "default": null,
+          "description": "PO Item Number"
+        },
+        "quantity": {
+          "sap_field": "QuantityInPurchaseOrderUnit",
+          "data_type": "decimal",
+          "required": false,
+          "transformations": ["parse_amount", "format_decimal:3"],
+          "validation": null,
+          "default": null,
+          "description": "Quantity"
+        },
+        "unit_price": {
+          "sap_field": "SupplierInvoiceItemAmount",
+          "data_type": "decimal",
+          "required": false,
+          "transformations": ["parse_amount", "format_decimal:2"],
+          "validation": null,
+          "default": null,
+          "description": "Item Amount"
+        },
+        "tax_code": {
+          "sap_field": "TaxCode",
+          "data_type": "string",
+          "required": false,
+          "max_length": 2,
+          "transformations": ["uppercase", "trim"],
+          "validation": null,
+          "default": null,
+          "description": "Tax Code"
+        },
+        "gl_account": {
+          "sap_field": "GLAccount",
+          "data_type": "string",
+          "required": false,
+          "max_length": 10,
+          "transformations": ["uppercase", "trim", "pad_left:10:0"],
+          "validation": null,
+          "default": null,
+          "description": "G/L Account"
+        }
+      }
+    }
+  }
+}
