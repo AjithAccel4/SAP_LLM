@@ -347,11 +347,20 @@ class TestDocumentGenerator:
 
 def main():
     """Generate test dataset."""
+    import sys
+
     generator = TestDocumentGenerator()
 
-    # Generate small test set for quick tests
-    print("Generating small test dataset (10 documents)...")
-    generator.generate_test_dataset(num_invoices=5, num_pos=5)
+    # Check command line arguments for dataset size
+    if len(sys.argv) > 1 and sys.argv[1] == '--enterprise':
+        # Generate enterprise-level test set (100 documents)
+        print("Generating enterprise-level test dataset (100 documents)...")
+        generator.generate_test_dataset(num_invoices=50, num_pos=50)
+    else:
+        # Generate small test set for quick tests
+        print("Generating small test dataset (10 documents)...")
+        print("Use --enterprise flag to generate 100 documents for production testing")
+        generator.generate_test_dataset(num_invoices=5, num_pos=5)
 
     print("\n✅ Test dataset generated successfully!")
 

@@ -1,7 +1,7 @@
 {
-  "total_documents": 10,
-  "num_invoices": 5,
-  "num_pos": 5,
+  "total_documents": 100,
+  "num_invoices": 50,
+  "num_pos": 50,
   "documents": [
     {
       "image_path": "tests/fixtures/invoice_INV-2025-0001.png",
@@ -10,16 +10,16 @@
         "subtype": "STANDARD",
         "fields": {
           "invoice_number": "INV-2025-0001",
-          "invoice_date": "2025-11-11",
-          "due_date": "2025-12-24",
-          "vendor_id": "VENDOR-585",
+          "invoice_date": "2025-11-18",
+          "due_date": "2025-12-26",
+          "vendor_id": "VENDOR-288",
           "vendor_name": "Acme Corporation",
           "vendor_address": "123 Business Street, Suite 100",
           "city_state_zip": "San Francisco, CA 94105",
           "tax_id": "XX-XXXXXXX",
-          "subtotal": 5736.21,
-          "tax_amount": 573.62,
-          "total_amount": 6309.83,
+          "subtotal": 1304.44,
+          "tax_amount": 130.44,
+          "total_amount": 1434.88,
           "currency": "USD",
           "payment_terms": "Net 30"
         }
@@ -33,16 +33,16 @@
         "subtype": "STANDARD",
         "fields": {
           "invoice_number": "INV-2025-0002",
-          "invoice_date": "2025-11-04",
-          "due_date": "2025-12-24",
-          "vendor_id": "VENDOR-174",
+          "invoice_date": "2025-11-12",
+          "due_date": "2026-01-03",
+          "vendor_id": "VENDOR-486",
           "vendor_name": "Acme Corporation",
           "vendor_address": "123 Business Street, Suite 100",
           "city_state_zip": "San Francisco, CA 94105",
           "tax_id": "XX-XXXXXXX",
-          "subtotal": 6143.45,
-          "tax_amount": 614.34,
-          "total_amount": 6757.79,
+          "subtotal": 8450.34,
+          "tax_amount": 845.03,
+          "total_amount": 9295.37,
           "currency": "USD",
           "payment_terms": "Net 30"
         }
@@ -56,16 +56,16 @@
         "subtype": "STANDARD",
         "fields": {
           "invoice_number": "INV-2025-0003",
-          "invoice_date": "2025-11-12",
-          "due_date": "2025-12-28",
-          "vendor_id": "VENDOR-802",
+          "invoice_date": "2025-11-05",
+          "due_date": "2025-12-06",
+          "vendor_id": "VENDOR-821",
           "vendor_name": "Acme Corporation",
           "vendor_address": "123 Business Street, Suite 100",
           "city_state_zip": "San Francisco, CA 94105",
           "tax_id": "XX-XXXXXXX",
-          "subtotal": 1547.31,
-          "tax_amount": 154.73,
-          "total_amount": 1702.04,
+          "subtotal": 8923.14,
+          "tax_amount": 892.31,
+          "total_amount": 9815.45,
           "currency": "USD",
           "payment_terms": "Net 30"
         }
@@ -79,16 +79,16 @@
         "subtype": "STANDARD",
         "fields": {
           "invoice_number": "INV-2025-0004",
-          "invoice_date": "2025-11-03",
-          "due_date": "2025-12-18",
-          "vendor_id": "VENDOR-520",
+          "invoice_date": "2025-10-21",
+          "due_date": "2025-12-15",
+          "vendor_id": "VENDOR-227",
           "vendor_name": "Acme Corporation",
           "vendor_address": "123 Business Street, Suite 100",
           "city_state_zip": "San Francisco, CA 94105",
           "tax_id": "XX-XXXXXXX",
-          "subtotal": 7899.16,
-          "tax_amount": 789.92,
-          "total_amount": 8689.08,
+          "subtotal": 7491.54,
+          "tax_amount": 749.15,
+          "total_amount": 8240.69,
           "currency": "USD",
           "payment_terms": "Net 30"
         }
@@ -102,21 +102,1056 @@
         "subtype": "STANDARD",
         "fields": {
           "invoice_number": "INV-2025-0005",
-          "invoice_date": "2025-11-02",
-          "due_date": "2025-12-11",
-          "vendor_id": "VENDOR-581",
+          "invoice_date": "2025-11-03",
+          "due_date": "2025-12-18",
+          "vendor_id": "VENDOR-497",
           "vendor_name": "Acme Corporation",
           "vendor_address": "123 Business Street, Suite 100",
           "city_state_zip": "San Francisco, CA 94105",
           "tax_id": "XX-XXXXXXX",
-          "subtotal": 6325.14,
-          "tax_amount": 632.51,
-          "total_amount": 6957.65,
+          "subtotal": 3744.81,
+          "tax_amount": 374.48,
+          "total_amount": 4119.29,
           "currency": "USD",
           "payment_terms": "Net 30"
         }
       },
       "doc_id": "INV-2025-0005"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0006.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0006",
+          "invoice_date": "2025-10-23",
+          "due_date": "2026-01-02",
+          "vendor_id": "VENDOR-559",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2350.99,
+          "tax_amount": 235.1,
+          "total_amount": 2586.09,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0006"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0007.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0007",
+          "invoice_date": "2025-11-02",
+          "due_date": "2025-12-06",
+          "vendor_id": "VENDOR-486",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2152.95,
+          "tax_amount": 215.29,
+          "total_amount": 2368.24,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0007"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0008.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0008",
+          "invoice_date": "2025-11-14",
+          "due_date": "2025-12-14",
+          "vendor_id": "VENDOR-165",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 7826.66,
+          "tax_amount": 782.67,
+          "total_amount": 8609.33,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0008"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0009.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0009",
+          "invoice_date": "2025-11-07",
+          "due_date": "2025-12-09",
+          "vendor_id": "VENDOR-601",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 3084.45,
+          "tax_amount": 308.45,
+          "total_amount": 3392.9,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0009"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0010.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0010",
+          "invoice_date": "2025-11-06",
+          "due_date": "2025-12-28",
+          "vendor_id": "VENDOR-276",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2617.42,
+          "tax_amount": 261.74,
+          "total_amount": 2879.16,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0010"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0011.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0011",
+          "invoice_date": "2025-11-13",
+          "due_date": "2025-12-06",
+          "vendor_id": "VENDOR-829",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 5722.73,
+          "tax_amount": 572.27,
+          "total_amount": 6295.0,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0011"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0012.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0012",
+          "invoice_date": "2025-11-18",
+          "due_date": "2025-12-31",
+          "vendor_id": "VENDOR-228",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 1934.41,
+          "tax_amount": 193.44,
+          "total_amount": 2127.85,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0012"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0013.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0013",
+          "invoice_date": "2025-11-16",
+          "due_date": "2025-12-30",
+          "vendor_id": "VENDOR-393",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 5415.75,
+          "tax_amount": 541.57,
+          "total_amount": 5957.32,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0013"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0014.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0014",
+          "invoice_date": "2025-11-13",
+          "due_date": "2026-01-02",
+          "vendor_id": "VENDOR-355",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 5860.07,
+          "tax_amount": 586.01,
+          "total_amount": 6446.08,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0014"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0015.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0015",
+          "invoice_date": "2025-10-29",
+          "due_date": "2025-12-11",
+          "vendor_id": "VENDOR-526",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 3648.44,
+          "tax_amount": 364.84,
+          "total_amount": 4013.28,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0015"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0016.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0016",
+          "invoice_date": "2025-11-09",
+          "due_date": "2025-12-24",
+          "vendor_id": "VENDOR-827",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 4077.29,
+          "tax_amount": 407.73,
+          "total_amount": 4485.02,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0016"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0017.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0017",
+          "invoice_date": "2025-10-27",
+          "due_date": "2025-12-11",
+          "vendor_id": "VENDOR-224",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 683.0,
+          "tax_amount": 68.3,
+          "total_amount": 751.3,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0017"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0018.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0018",
+          "invoice_date": "2025-10-24",
+          "due_date": "2025-12-29",
+          "vendor_id": "VENDOR-825",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 8217.48,
+          "tax_amount": 821.75,
+          "total_amount": 9039.23,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0018"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0019.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0019",
+          "invoice_date": "2025-11-15",
+          "due_date": "2025-12-08",
+          "vendor_id": "VENDOR-861",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2001.25,
+          "tax_amount": 200.13,
+          "total_amount": 2201.38,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0019"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0020.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0020",
+          "invoice_date": "2025-10-28",
+          "due_date": "2025-12-26",
+          "vendor_id": "VENDOR-839",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 3759.34,
+          "tax_amount": 375.93,
+          "total_amount": 4135.27,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0020"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0021.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0021",
+          "invoice_date": "2025-10-23",
+          "due_date": "2025-12-07",
+          "vendor_id": "VENDOR-566",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 3899.95,
+          "tax_amount": 389.99,
+          "total_amount": 4289.94,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0021"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0022.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0022",
+          "invoice_date": "2025-11-06",
+          "due_date": "2025-12-24",
+          "vendor_id": "VENDOR-790",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 1130.28,
+          "tax_amount": 113.03,
+          "total_amount": 1243.31,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0022"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0023.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0023",
+          "invoice_date": "2025-11-15",
+          "due_date": "2025-12-17",
+          "vendor_id": "VENDOR-939",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 8018.66,
+          "tax_amount": 801.87,
+          "total_amount": 8820.53,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0023"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0024.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0024",
+          "invoice_date": "2025-11-09",
+          "due_date": "2025-12-26",
+          "vendor_id": "VENDOR-696",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 6978.21,
+          "tax_amount": 697.82,
+          "total_amount": 7676.03,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0024"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0025.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0025",
+          "invoice_date": "2025-11-06",
+          "due_date": "2025-12-29",
+          "vendor_id": "VENDOR-828",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 882.13,
+          "tax_amount": 88.21,
+          "total_amount": 970.34,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0025"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0026.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0026",
+          "invoice_date": "2025-10-30",
+          "due_date": "2025-12-25",
+          "vendor_id": "VENDOR-525",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 5704.29,
+          "tax_amount": 570.43,
+          "total_amount": 6274.72,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0026"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0027.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0027",
+          "invoice_date": "2025-10-24",
+          "due_date": "2025-12-27",
+          "vendor_id": "VENDOR-668",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2889.73,
+          "tax_amount": 288.97,
+          "total_amount": 3178.7,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0027"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0028.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0028",
+          "invoice_date": "2025-10-21",
+          "due_date": "2025-12-31",
+          "vendor_id": "VENDOR-356",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 6701.41,
+          "tax_amount": 670.14,
+          "total_amount": 7371.55,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0028"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0029.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0029",
+          "invoice_date": "2025-11-14",
+          "due_date": "2025-12-26",
+          "vendor_id": "VENDOR-736",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 1496.14,
+          "tax_amount": 149.61,
+          "total_amount": 1645.75,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0029"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0030.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0030",
+          "invoice_date": "2025-10-23",
+          "due_date": "2025-12-16",
+          "vendor_id": "VENDOR-649",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 6519.56,
+          "tax_amount": 651.96,
+          "total_amount": 7171.52,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0030"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0031.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0031",
+          "invoice_date": "2025-10-23",
+          "due_date": "2025-12-09",
+          "vendor_id": "VENDOR-109",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 3592.95,
+          "tax_amount": 359.29,
+          "total_amount": 3952.24,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0031"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0032.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0032",
+          "invoice_date": "2025-11-18",
+          "due_date": "2025-12-14",
+          "vendor_id": "VENDOR-585",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 4105.1,
+          "tax_amount": 410.51,
+          "total_amount": 4515.61,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0032"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0033.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0033",
+          "invoice_date": "2025-11-17",
+          "due_date": "2026-01-01",
+          "vendor_id": "VENDOR-280",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 8157.17,
+          "tax_amount": 815.72,
+          "total_amount": 8972.89,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0033"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0034.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0034",
+          "invoice_date": "2025-11-12",
+          "due_date": "2025-12-30",
+          "vendor_id": "VENDOR-533",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 5493.79,
+          "tax_amount": 549.38,
+          "total_amount": 6043.17,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0034"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0035.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0035",
+          "invoice_date": "2025-11-18",
+          "due_date": "2025-12-23",
+          "vendor_id": "VENDOR-647",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 7098.0,
+          "tax_amount": 709.8,
+          "total_amount": 7807.8,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0035"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0036.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0036",
+          "invoice_date": "2025-11-04",
+          "due_date": "2025-12-26",
+          "vendor_id": "VENDOR-340",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 8150.42,
+          "tax_amount": 815.04,
+          "total_amount": 8965.46,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0036"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0037.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0037",
+          "invoice_date": "2025-10-29",
+          "due_date": "2025-12-24",
+          "vendor_id": "VENDOR-255",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2891.38,
+          "tax_amount": 289.14,
+          "total_amount": 3180.52,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0037"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0038.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0038",
+          "invoice_date": "2025-10-27",
+          "due_date": "2025-12-26",
+          "vendor_id": "VENDOR-228",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 1256.49,
+          "tax_amount": 125.65,
+          "total_amount": 1382.14,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0038"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0039.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0039",
+          "invoice_date": "2025-10-26",
+          "due_date": "2025-12-24",
+          "vendor_id": "VENDOR-115",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 8411.88,
+          "tax_amount": 841.19,
+          "total_amount": 9253.07,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0039"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0040.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0040",
+          "invoice_date": "2025-11-15",
+          "due_date": "2025-12-05",
+          "vendor_id": "VENDOR-292",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 4175.08,
+          "tax_amount": 417.51,
+          "total_amount": 4592.59,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0040"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0041.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0041",
+          "invoice_date": "2025-11-15",
+          "due_date": "2025-12-21",
+          "vendor_id": "VENDOR-293",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 1317.9,
+          "tax_amount": 131.79,
+          "total_amount": 1449.69,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0041"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0042.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0042",
+          "invoice_date": "2025-10-26",
+          "due_date": "2025-12-27",
+          "vendor_id": "VENDOR-279",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2977.92,
+          "tax_amount": 297.79,
+          "total_amount": 3275.71,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0042"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0043.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0043",
+          "invoice_date": "2025-11-01",
+          "due_date": "2025-12-25",
+          "vendor_id": "VENDOR-765",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 202.92,
+          "tax_amount": 20.29,
+          "total_amount": 223.21,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0043"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0044.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0044",
+          "invoice_date": "2025-11-07",
+          "due_date": "2025-12-12",
+          "vendor_id": "VENDOR-160",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2025.47,
+          "tax_amount": 202.55,
+          "total_amount": 2228.02,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0044"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0045.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0045",
+          "invoice_date": "2025-10-30",
+          "due_date": "2025-12-26",
+          "vendor_id": "VENDOR-204",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 7927.35,
+          "tax_amount": 792.74,
+          "total_amount": 8720.09,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0045"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0046.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0046",
+          "invoice_date": "2025-10-31",
+          "due_date": "2025-12-18",
+          "vendor_id": "VENDOR-564",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 4581.58,
+          "tax_amount": 458.16,
+          "total_amount": 5039.74,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0046"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0047.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0047",
+          "invoice_date": "2025-11-03",
+          "due_date": "2025-12-28",
+          "vendor_id": "VENDOR-195",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 2555.51,
+          "tax_amount": 255.55,
+          "total_amount": 2811.06,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0047"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0048.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0048",
+          "invoice_date": "2025-11-02",
+          "due_date": "2025-12-10",
+          "vendor_id": "VENDOR-159",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 4054.48,
+          "tax_amount": 405.45,
+          "total_amount": 4459.93,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0048"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0049.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0049",
+          "invoice_date": "2025-10-23",
+          "due_date": "2025-12-26",
+          "vendor_id": "VENDOR-162",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 1077.94,
+          "tax_amount": 107.79,
+          "total_amount": 1185.73,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0049"
+    },
+    {
+      "image_path": "tests/fixtures/invoice_INV-2025-0050.png",
+      "ground_truth": {
+        "doc_type": "SUPPLIER_INVOICE",
+        "subtype": "STANDARD",
+        "fields": {
+          "invoice_number": "INV-2025-0050",
+          "invoice_date": "2025-11-06",
+          "due_date": "2025-12-16",
+          "vendor_id": "VENDOR-887",
+          "vendor_name": "Acme Corporation",
+          "vendor_address": "123 Business Street, Suite 100",
+          "city_state_zip": "San Francisco, CA 94105",
+          "tax_id": "XX-XXXXXXX",
+          "subtotal": 4531.23,
+          "tax_amount": 453.12,
+          "total_amount": 4984.35,
+          "currency": "USD",
+          "payment_terms": "Net 30"
+        }
+      },
+      "doc_id": "INV-2025-0050"
     },
     {
       "image_path": "tests/fixtures/po_PO-2025-0001.png",
@@ -127,12 +1162,12 @@
           "po_number": "PO-2025-0001",
           "po_date": "2025-11-19",
           "delivery_date": "2025-12-03",
-          "vendor_id": "VENDOR-946",
+          "vendor_id": "VENDOR-251",
           "vendor_name": "Global Supplies Inc.",
           "ship_to": "Our Company, 456 Main St",
           "bill_to": "Our Company, Accounts Payable",
           "buyer": "John Doe",
-          "total_amount": 6645.3,
+          "total_amount": 21199.43,
           "currency": "USD"
         }
       },
@@ -147,12 +1182,12 @@
           "po_number": "PO-2025-0002",
           "po_date": "2025-11-19",
           "delivery_date": "2025-12-03",
-          "vendor_id": "VENDOR-807",
+          "vendor_id": "VENDOR-105",
           "vendor_name": "Global Supplies Inc.",
           "ship_to": "Our Company, 456 Main St",
           "bill_to": "Our Company, Accounts Payable",
           "buyer": "John Doe",
-          "total_amount": 2615.32,
+          "total_amount": 26874.04,
           "currency": "USD"
         }
       },
@@ -167,12 +1202,12 @@
           "po_number": "PO-2025-0003",
           "po_date": "2025-11-19",
           "delivery_date": "2025-12-03",
-          "vendor_id": "VENDOR-515",
+          "vendor_id": "VENDOR-446",
           "vendor_name": "Global Supplies Inc.",
           "ship_to": "Our Company, 456 Main St",
           "bill_to": "Our Company, Accounts Payable",
           "buyer": "John Doe",
-          "total_amount": 34170.83,
+          "total_amount": 48282.56,
           "currency": "USD"
         }
       },
@@ -187,12 +1222,12 @@
           "po_number": "PO-2025-0004",
           "po_date": "2025-11-19",
           "delivery_date": "2025-12-03",
-          "vendor_id": "VENDOR-132",
+          "vendor_id": "VENDOR-834",
           "vendor_name": "Global Supplies Inc.",
           "ship_to": "Our Company, 456 Main St",
           "bill_to": "Our Company, Accounts Payable",
           "buyer": "John Doe",
-          "total_amount": 25382.89,
+          "total_amount": 30783.04,
           "currency": "USD"
         }
       },
@@ -207,17 +1242,917 @@
           "po_number": "PO-2025-0005",
           "po_date": "2025-11-19",
           "delivery_date": "2025-12-03",
-          "vendor_id": "VENDOR-348",
+          "vendor_id": "VENDOR-794",
           "vendor_name": "Global Supplies Inc.",
           "ship_to": "Our Company, 456 Main St",
           "bill_to": "Our Company, Accounts Payable",
           "buyer": "John Doe",
-          "total_amount": 31441.75,
+          "total_amount": 25258.5,
           "currency": "USD"
         }
       },
       "doc_id": "PO-2025-0005"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0006.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0006",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-123",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 43024.91,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0006"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0007.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0007",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-236",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 5662.87,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0007"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0008.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0008",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-324",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 45463.15,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0008"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0009.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0009",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-893",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 12627.59,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0009"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0010.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0010",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-243",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 31992.13,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0010"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0011.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0011",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-299",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 34181.92,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0011"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0012.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0012",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-302",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 44937.66,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0012"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0013.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0013",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-305",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 19459.39,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0013"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0014.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0014",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-304",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 30622.2,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0014"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0015.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0015",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-865",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 43606.62,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0015"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0016.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0016",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-346",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 22787.13,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0016"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0017.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0017",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-371",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 44265.14,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0017"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0018.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0018",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-526",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 34393.26,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0018"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0019.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0019",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-926",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 18965.7,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0019"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0020.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0020",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-111",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 33504.15,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0020"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0021.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0021",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-561",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 1281.01,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0021"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0022.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0022",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-183",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 26386.62,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0022"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0023.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0023",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-732",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 47883.13,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0023"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0024.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0024",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-597",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 32620.54,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0024"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0025.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0025",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-980",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 49351.59,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0025"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0026.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0026",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-912",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 12045.98,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0026"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0027.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0027",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-709",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 49512.65,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0027"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0028.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0028",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-457",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 1356.59,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0028"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0029.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0029",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-487",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 22157.06,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0029"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0030.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0030",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-647",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 21846.86,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0030"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0031.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0031",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-527",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 6147.42,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0031"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0032.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0032",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-614",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 45052.78,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0032"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0033.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0033",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-308",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 26247.21,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0033"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0034.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0034",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-935",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 31249.95,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0034"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0035.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0035",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-906",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 34239.6,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0035"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0036.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0036",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-263",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 25748.81,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0036"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0037.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0037",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-558",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 41011.98,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0037"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0038.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0038",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-101",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 15773.95,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0038"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0039.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0039",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-110",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 21175.32,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0039"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0040.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0040",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-906",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 16429.53,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0040"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0041.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0041",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-222",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 13416.06,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0041"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0042.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0042",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-768",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 4588.16,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0042"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0043.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0043",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-158",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 30324.58,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0043"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0044.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0044",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-152",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 10804.05,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0044"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0045.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0045",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-970",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 30041.55,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0045"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0046.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0046",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-988",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 43081.7,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0046"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0047.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0047",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-334",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 34334.86,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0047"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0048.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0048",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-205",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 4129.44,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0048"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0049.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0049",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-917",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 11246.6,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0049"
+    },
+    {
+      "image_path": "tests/fixtures/po_PO-2025-0050.png",
+      "ground_truth": {
+        "doc_type": "PURCHASE_ORDER",
+        "subtype": "STANDARD",
+        "fields": {
+          "po_number": "PO-2025-0050",
+          "po_date": "2025-11-19",
+          "delivery_date": "2025-12-03",
+          "vendor_id": "VENDOR-765",
+          "vendor_name": "Global Supplies Inc.",
+          "ship_to": "Our Company, 456 Main St",
+          "bill_to": "Our Company, Accounts Payable",
+          "buyer": "John Doe",
+          "total_amount": 40451.56,
+          "currency": "USD"
+        }
+      },
+      "doc_id": "PO-2025-0050"
     }
   ],
-  "created_at": "2025-11-19T15:34:06.147379"
+  "created_at": "2025-11-19T16:58:02.573729"
 }
