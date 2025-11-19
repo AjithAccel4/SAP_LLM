@@ -131,3 +131,108 @@ class TestLogger:
             raise ValueError("Test error")
         except ValueError:
             logger.error("Error occurred", exc_info=True)
+
+
+@pytest.mark.unit
+class TestHashAdditional:
+    """Additional hash tests for edge cases."""
+
+    def test_hash_with_different_algorithms(self):
+        """Test hashing with various secure algorithms."""
+        text = "test data"
+
+        # Test SHA-256
+        hash_sha256 = compute_hash(text, algorithm="sha256")
+        assert len(hash_sha256) == 64
+
+        # Test SHA-384
+        hash_sha384 = compute_hash(text, algorithm="sha384")
+        assert len(hash_sha384) == 96
+
+        # Test SHA-512
+        hash_sha512 = compute_hash(text, algorithm="sha512")
+        assert len(hash_sha512) == 128
+
+    def test_hash_insecure_algorithm_rejection(self):
+        """Test that insecure algorithms are rejected."""
+        # MD5 should be rejected
+        with pytest.raises(ValueError, match="Insecure hash algorithm"):
+            compute_hash("data", algorithm="md5")
+
+        # SHA1 should be rejected
+        with pytest.raises(ValueError, match="Insecure hash algorithm"):
+            compute_hash("data", algorithm="sha1")
+
+    def test_hash_unknown_algorithm(self):
+        """Test that unknown algorithms are rejected."""
+        with pytest.raises(ValueError, match="Unknown or unsupported hash algorithm"):
+            compute_hash("data", algorithm="invalid_algo")
+
+    def test_hash_bytes_input(self):
+        """Test hashing with bytes input."""
+        data = b"binary data"
+        hash_result = compute_hash(data)
+
+        assert isinstance(hash_result, str)
+        assert len(hash_result) == 64
+
+    def test_file_hash_with_different_algorithms(self, temp_dir):
+        """Test file hashing with different algorithms."""
+        test_file = temp_dir / "test.bin"
+        test_file.write_bytes(b"test content")
+
+        # SHA-256
+        hash_sha256 = compute_file_hash(str(test_file), algorithm="sha256")
+        assert len(hash_sha256) == 64
+
+        # SHA-512
+        hash_sha512 = compute_file_hash(str(test_file), algorithm="sha512")
+        assert len(hash_sha512) == 128
+
+    def test_file_hash_insecure_algorithm(self, temp_dir):
+        """Test that file hashing rejects insecure algorithms."""
+        test_file = temp_dir / "test.txt"
+        test_file.write_text("content")
+
+        with pytest.raises(ValueError, match="Insecure hash algorithm"):
+            compute_file_hash(str(test_file), algorithm="md5")
+
+
+@pytest.mark.unit
+class TestTimerAdditional:
+    """Additional timer tests for coverage."""
+
+    def test_timer_string_representation(self):
+        """Test timer string representation."""
+        t = Timer("Test Operation")
+
+        # Before completion
+        assert "not completed" in str(t)
+
+        # After completion
+        t.start()
+        time.sleep(0.1)
+        t.stop()
+        assert "Test Operation" in str(t)
+        assert "s" in str(t)
+
+    def test_timer_decorator_with_name(self):
+        """Test timer decorator with custom name."""
+        from sap_llm.utils.timer import timer
+
+        @timer(name="Custom Operation")
+        def test_func():
+            time.sleep(0.05)
+            return "done"
+
+        result = test_func()
+        assert result == "done"
+
+    def test_timer_context_manager_name(self):
+        """Test timer context manager with custom name."""
+        with Timer("Processing Test") as t:
+            time.sleep(0.05)
+
+        assert t.elapsed >= 0.05
+        assert t.start_time is not None
+        assert t.end_time is not None
