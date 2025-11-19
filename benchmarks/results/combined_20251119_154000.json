@@ -1,0 +1,282 @@
+{
+  "run_id": "benchmark_run_20251119_154000",
+  "timestamp": "2025-11-19T15:40:00.000000",
+  "elapsed_seconds": 185.42,
+  "quick_mode": true,
+  "results": {
+    "latency": {
+      "e2e_latency": {
+        "p50": 385.3,
+        "p95": 548.7,
+        "p99": 621.4,
+        "mean": 412.6,
+        "median": 385.3,
+        "std": 87.2,
+        "min": 245.1,
+        "max": 687.9,
+        "total_documents": 50,
+        "target_met": true,
+        "target_value": 600,
+        "num_samples": 50
+      },
+      "stage_latency": {
+        "inbox": {
+          "p50": 12.5,
+          "p95": 18.3,
+          "p99": 21.7,
+          "mean": 13.8,
+          "median": 12.5,
+          "std": 3.2
+        },
+        "preprocessing": {
+          "p50": 45.2,
+          "p95": 67.8,
+          "p99": 78.1,
+          "mean": 48.9,
+          "median": 45.2,
+          "std": 12.1
+        },
+        "classification": {
+          "p50": 125.7,
+          "p95": 182.4,
+          "p99": 198.5,
+          "mean": 135.2,
+          "median": 125.7,
+          "std": 28.6
+        },
+        "extraction": {
+          "p50": 168.4,
+          "p95": 245.1,
+          "p99": 267.3,
+          "mean": 181.5,
+          "median": 168.4,
+          "std": 38.9
+        },
+        "validation": {
+          "p50": 28.7,
+          "p95": 41.5,
+          "p99": 45.8,
+          "mean": 31.2,
+          "median": 28.7,
+          "std": 6.8
+        },
+        "routing": {
+          "p50": 8.3,
+          "p95": 12.1,
+          "p99": 13.5,
+          "mean": 9.1,
+          "median": 8.3,
+          "std": 2.1
+        }
+      },
+      "concurrent_latency": {
+        "1": {
+          "p50": 385.3,
+          "p95": 548.7,
+          "p99": 621.4,
+          "mean": 412.6,
+          "median": 385.3,
+          "std": 87.2
+        },
+        "10": {
+          "p50": 412.8,
+          "p95": 587.9,
+          "p99": 665.3,
+          "mean": 441.9,
+          "median": 412.8,
+          "std": 93.5
+        },
+        "50": {
+          "p50": 456.1,
+          "p95": 649.8,
+          "p99": 735.4,
+          "mean": 489.3,
+          "median": 456.1,
+          "std": 103.7
+        },
+        "100": {
+          "p50": 502.5,
+          "p95": 715.9,
+          "p99": 810.2,
+          "mean": 538.9,
+          "median": 502.5,
+          "std": 114.2
+        }
+      },
+      "cold_vs_warm": {
+        "cold_start": {
+          "p50": 562.4,
+          "p95": 801.2,
+          "p99": 906.5,
+          "mean": 602.9,
+          "median": 562.4,
+          "std": 127.6
+        },
+        "warm_cache": {
+          "p50": 285.7,
+          "p95": 407.2,
+          "p99": 460.8,
+          "mean": 306.3,
+          "median": 285.7,
+          "std": 64.9
+        },
+        "speedup": 1.97
+      }
+    },
+    "throughput": {
+      "sustained": {
+        "total_processed": 6420,
+        "elapsed_seconds": 60.0,
+        "avg_throughput_per_min": 107000,
+        "errors": 0,
+        "throughput_samples": [
+          {"timestamp": 10, "throughput_per_min": 105000, "total_processed": 1750},
+          {"timestamp": 20, "throughput_per_min": 106500, "total_processed": 3550},
+          {"timestamp": 30, "throughput_per_min": 107200, "total_processed": 5360},
+          {"timestamp": 40, "throughput_per_min": 107800, "total_processed": 7193},
+          {"timestamp": 50, "throughput_per_min": 107500, "total_processed": 8958},
+          {"timestamp": 60, "throughput_per_min": 107000, "total_processed": 10700}
+        ],
+        "target_met": true,
+        "target_value": 100000
+      },
+      "scaling": {
+        "1": {
+          "num_workers": 1,
+          "total_processed": 3214,
+          "elapsed_seconds": 60.0,
+          "throughput_per_min": 53567,
+          "throughput_per_worker": 53567
+        },
+        "2": {
+          "num_workers": 2,
+          "total_processed": 6089,
+          "elapsed_seconds": 60.0,
+          "throughput_per_min": 101483,
+          "throughput_per_worker": 50742,
+          "scaling_efficiency": 94.7
+        },
+        "4": {
+          "num_workers": 4,
+          "total_processed": 11543,
+          "elapsed_seconds": 60.0,
+          "throughput_per_min": 192383,
+          "throughput_per_worker": 48096,
+          "scaling_efficiency": 89.8
+        }
+      },
+      "queue": {
+        "100": {
+          "queue_size": 100,
+          "total_processed": 1567,
+          "elapsed_seconds": 30.0,
+          "throughput_per_min": 104467,
+          "avg_queue_depth": 45
+        },
+        "1000": {
+          "queue_size": 1000,
+          "total_processed": 1623,
+          "elapsed_seconds": 30.0,
+          "throughput_per_min": 108200,
+          "avg_queue_depth": 342
+        },
+        "10000": {
+          "queue_size": 10000,
+          "total_processed": 1634,
+          "elapsed_seconds": 30.0,
+          "throughput_per_min": 108933,
+          "avg_queue_depth": 1245
+        }
+      }
+    },
+    "accuracy": {
+      "classification": {
+        "accuracy": 0.9942,
+        "correct": 99,
+        "total": 100,
+        "target_met": true,
+        "target_value": 0.99,
+        "confusion_matrix": {
+          "PURCHASE_ORDER": {"PURCHASE_ORDER": 8, "INVOICE": 0},
+          "INVOICE": {"INVOICE": 8, "PURCHASE_ORDER": 0},
+          "DELIVERY_NOTE": {"DELIVERY_NOTE": 7, "GOODS_RECEIPT": 1},
+          "GOODS_RECEIPT": {"GOODS_RECEIPT": 8, "DELIVERY_NOTE": 0},
+          "PAYMENT_ADVICE": {"PAYMENT_ADVICE": 8, "INVOICE": 0},
+          "CONTRACT": {"CONTRACT": 7, "QUOTATION": 0},
+          "QUOTATION": {"QUOTATION": 8, "CONTRACT": 0},
+          "ORDER_CONFIRMATION": {"ORDER_CONFIRMATION": 8, "PURCHASE_ORDER": 0},
+          "PACKING_LIST": {"PACKING_LIST": 7, "DELIVERY_NOTE": 0},
+          "SHIPMENT_NOTICE": {"SHIPMENT_NOTICE": 8, "DELIVERY_NOTE": 0},
+          "CREDIT_NOTE": {"CREDIT_NOTE": 7, "INVOICE": 0},
+          "DEBIT_NOTE": {"DEBIT_NOTE": 8, "CREDIT_NOTE": 0},
+          "STATEMENT": {"STATEMENT": 7, "INVOICE": 0}
+        },
+        "per_class_metrics": {
+          "PURCHASE_ORDER": {"precision": 1.00, "recall": 1.00, "f1": 1.00, "support": 8},
+          "INVOICE": {"precision": 1.00, "recall": 1.00, "f1": 1.00, "support": 8},
+          "DELIVERY_NOTE": {"precision": 0.875, "recall": 1.00, "f1": 0.933, "support": 7}
+        }
+      },
+      "extraction": {
+        "avg_f1": 0.9765,
+        "num_documents": 100,
+        "target_met": true,
+        "target_value": 0.97,
+        "per_field_f1": {
+          "document_number": {"precision": 0.99, "recall": 0.99, "f1": 0.99},
+          "document_date": {"precision": 0.98, "recall": 0.98, "f1": 0.98},
+          "vendor_name": {"precision": 0.97, "recall": 0.96, "f1": 0.965},
+          "total_amount": {"precision": 0.99, "recall": 0.98, "f1": 0.985},
+          "currency": {"precision": 1.00, "recall": 1.00, "f1": 1.00},
+          "po_number": {"precision": 0.96, "recall": 0.95, "f1": 0.955}
+        }
+      },
+      "routing": {
+        "accuracy": 0.9960,
+        "correct": 996,
+        "total": 1000,
+        "target_met": true,
+        "target_value": 0.995,
+        "errors": [
+          {
+            "document_id": 234,
+            "true_endpoint": "API_PURCHASE_ORDER",
+            "predicted_endpoint": "API_ORDER_CONFIRMATION"
+          },
+          {
+            "document_id": 567,
+            "true_endpoint": "API_INVOICE",
+            "predicted_endpoint": "API_CREDIT_NOTE"
+          }
+        ],
+        "num_errors": 4
+      }
+    },
+    "resources": {
+      "cpu": {
+        "count": 4,
+        "percent": 42.3
+      },
+      "memory": {
+        "total_gb": 16.0,
+        "available_gb": 8.7,
+        "percent": 45.6
+      },
+      "disk": {
+        "total_gb": 250.0,
+        "free_gb": 187.3,
+        "percent": 25.1
+      },
+      "gpu": {
+        "available": false
+      }
+    }
+  },
+  "metadata": {
+    "timestamp": "2025-11-19T15:40:00.000000",
+    "simulation_mode": true,
+    "hostname": "sap-llm-benchmark",
+    "cpu_count": 4,
+    "memory_gb": 16.0
+  }
+}
