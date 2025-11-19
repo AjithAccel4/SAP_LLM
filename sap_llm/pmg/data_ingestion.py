@@ -396,7 +396,7 @@ class PMGDataIngestion:
         """
         Verify ingestion success criteria.
 
-        Success Criteria (from TODO):
+        Production Success Criteria:
         - Documents in PMG: ≥100,000
         - Embedding generation: 768-dim, <50ms per document
         - Similarity search: <100ms for top-5 results
