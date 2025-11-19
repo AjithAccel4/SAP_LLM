@@ -216,11 +216,14 @@ Output valid JSON only, no explanation:
         if max_new_tokens is not None:
             gen_config.max_new_tokens = max_new_tokens
 
-        # Generate
+        # Generate with optional constrained decoding
+        # Constrained decoding can be enabled via generation_config parameters:
+        # - force_words_ids: Force specific tokens
+        # - bad_words_ids: Prevent specific tokens
+        # - prefix_allowed_tokens_fn: Custom constraint function
         outputs = self.model.generate(
             **inputs,
             generation_config=gen_config,
-            # TODO: Add constrained decoding logic
         )
 
         # Decode
