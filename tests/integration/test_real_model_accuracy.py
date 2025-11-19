@@ -151,7 +151,23 @@ def calculate_field_f1(
 class TestClassificationAccuracy:
     """Test classification accuracy with real models."""
 
+    @pytest.mark.slow
+    def test_accuracy_100_docs(self, real_model_loader, test_dataset):
+        """
+        Test classification accuracy on 100 documents (enterprise-level).
+
+        Target: ≥99% accuracy
+
+        This test runs on the full 100-document test dataset to provide
+        statistically significant accuracy measurements for production deployment.
+        """
+        return self._test_accuracy_on_dataset(real_model_loader, test_dataset, min_docs=100)
+
     def test_accuracy_on_test_set(self, real_model_loader, test_dataset):
+        """Alias for test_accuracy_100_docs for backward compatibility."""
+        return self._test_accuracy_on_dataset(real_model_loader, test_dataset, min_docs=10)
+
+    def _test_accuracy_on_dataset(self, real_model_loader, test_dataset, min_docs=10):
         """
         Test classification accuracy on full test dataset.
 
@@ -219,17 +235,47 @@ class TestClassificationAccuracy:
         # Calculate accuracy
         accuracy = calculate_classification_accuracy(predictions, ground_truths)
 
-        # Calculate per-class accuracy
+        # Calculate per-class accuracy and confusion matrix
         class_accuracies = defaultdict(lambda: {"correct": 0, "total": 0})
+        confusion_matrix = defaultdict(lambda: defaultdict(int))
+
+        # Calculate precision and recall per class
+        true_positives = defaultdict(int)
+        false_positives = defaultdict(int)
+        false_negatives = defaultdict(int)
 
         for pred, gt in zip(predictions, ground_truths):
             class_accuracies[gt]["total"] += 1
+            confusion_matrix[gt][pred] += 1
+
             if pred == gt:
                 class_accuracies[gt]["correct"] += 1
+                true_positives[gt] += 1
+            else:
+                false_negatives[gt] += 1
+                false_positives[pred] += 1
 
         # Performance metrics
         mean_latency = np.mean(latencies)
         p95_latency = np.percentile(latencies, 95)
+
+        # Calculate precision and recall
+        precision_per_class = {}
+        recall_per_class = {}
+        f1_per_class = {}
+
+        for doc_type in set(ground_truths):
+            tp = true_positives[doc_type]
+            fp = false_positives[doc_type]
+            fn = false_negatives[doc_type]
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+            precision_per_class[doc_type] = precision
+            recall_per_class[doc_type] = recall
+            f1_per_class[doc_type] = f1
 
         # Log results
         logger.info("=" * 70)
@@ -238,11 +284,37 @@ class TestClassificationAccuracy:
         logger.info(f"  Mean Latency: {mean_latency:.2f}ms")
         logger.info(f"  P95 Latency: {p95_latency:.2f}ms")
         logger.info("")
-        logger.info("Per-Class Accuracy:")
+        logger.info("Per-Class Metrics:")
 
-        for doc_type, stats in class_accuracies.items():
+        for doc_type in sorted(class_accuracies.keys()):
+            stats = class_accuracies[doc_type]
             class_acc = stats["correct"] / stats["total"] if stats["total"] > 0 else 0
-            logger.info(f"  {doc_type}: {class_acc*100:.2f}% ({stats['correct']}/{stats['total']})")
+            prec = precision_per_class.get(doc_type, 0)
+            rec = recall_per_class.get(doc_type, 0)
+            f1 = f1_per_class.get(doc_type, 0)
+
+            logger.info(f"  {doc_type}:")
+            logger.info(f"    Accuracy:  {class_acc*100:.2f}% ({stats['correct']}/{stats['total']})")
+            logger.info(f"    Precision: {prec*100:.2f}%")
+            logger.info(f"    Recall:    {rec*100:.2f}%")
+            logger.info(f"    F1 Score:  {f1*100:.2f}%")
+
+        # Log confusion matrix
+        logger.info("")
+        logger.info("Confusion Matrix:")
+        logger.info("  (Rows: Ground Truth, Columns: Predictions)")
+
+        all_types = sorted(set(predictions) | set(ground_truths))
+        header = "  GT\\Pred |" + "|".join(f" {t[:8]:8s}" for t in all_types)
+        logger.info(header)
+        logger.info("  " + "-" * len(header))
+
+        for gt_type in all_types:
+            row = f"  {gt_type[:8]:8s} |"
+            for pred_type in all_types:
+                count = confusion_matrix[gt_type][pred_type]
+                row += f" {count:8d}|"
+            logger.info(row)
 
         logger.info("=" * 70)
 
@@ -270,7 +342,23 @@ class TestExtractionAccuracy:
     """Test extraction accuracy with real models."""
 
     @pytest.mark.slow
+    def test_extraction_f1_score_100_docs(self, real_model_loader, test_dataset):
+        """
+        Test extraction F1 score on 100 documents (enterprise-level).
+
+        Target: ≥97% F1 per field
+
+        This test runs on the full 100-document test dataset to provide
+        statistically significant F1 measurements for production deployment.
+        """
+        return self._test_extraction_f1(real_model_loader, test_dataset, min_docs=100)
+
+    @pytest.mark.slow
     def test_extraction_f1_on_test_set(self, real_model_loader, test_dataset):
+        """Alias for test_extraction_f1_score_100_docs for backward compatibility."""
+        return self._test_extraction_f1(real_model_loader, test_dataset, min_docs=10)
+
+    def _test_extraction_f1(self, real_model_loader, test_dataset, min_docs=10):
         """
         Test extraction F1 score on test dataset.
 
@@ -286,8 +374,10 @@ class TestExtractionAccuracy:
         all_f1_scores = defaultdict(list)
         latencies = []
 
-        documents = test_dataset["documents"][:10]  # Test on subset for speed
-        logger.info(f"Testing on {len(documents)} documents")
+        # Use specified number of documents
+        num_docs = min(min_docs, len(test_dataset["documents"]))
+        documents = test_dataset["documents"][:num_docs]
+        logger.info(f"Testing on {num_docs} documents (min required: {min_docs})")
 
         for i, doc in enumerate(documents):
             ground_truth_fields = doc["ground_truth"]["fields"]
