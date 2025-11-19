@@ -1,0 +1,81 @@
+# Self-Correction System Configuration
+# Enterprise-grade configuration with validation and environment overrides
+
+correction:
+  # Error Detection Settings
+  confidence_threshold_critical: 0.85  # Critical fields (total_amount, vendor_id)
+  confidence_threshold_required: 0.75  # Required fields
+  confidence_threshold_optional: 0.70  # Optional fields
+
+  # Correction Engine Settings
+  max_correction_attempts: 3
+  overall_confidence_threshold: 0.80
+  enable_pattern_learning: true
+  enable_human_escalation: true
+
+  # Strategy Settings
+  enable_rule_based: true
+  enable_rerun_extraction: true
+  enable_context_enhancement: true
+  enable_human_loop: true
+
+  # Escalation Settings
+  escalation_confidence_threshold: 0.70
+  escalation_max_auto_attempts: 3
+
+  # SLA Settings (hours)
+  sla_urgent: 2
+  sla_high: 8
+  sla_normal: 24
+  sla_low: 72
+
+  # Analytics Settings
+  analytics_retention_days: 90
+  analytics_export_format: "json"
+
+  # Pattern Learning Settings
+  pattern_storage_enabled: true
+  pattern_storage_path: "./data/correction_patterns"
+  pattern_min_confidence: 0.80
+
+  # Performance Settings
+  correction_timeout_seconds: 30
+  max_parallel_corrections: 10
+
+  # Logging Settings
+  log_level: "INFO"
+  enable_audit_logging: true
+  mask_sensitive_fields: true
+  sensitive_fields:
+    - vendor_id
+    - customer_id
+    - account_number
+    - tax_id
+    - ssn
+    - credit_card
+
+  # Monitoring Settings
+  enable_metrics: true
+  metrics_port: 9090
+  health_check_enabled: true
+
+  # Retry Settings
+  retry_enabled: true
+  retry_max_attempts: 3
+  retry_backoff_factor: 2.0
+  retry_initial_delay_ms: 1000
+
+  # Circuit Breaker Settings
+  circuit_breaker_enabled: true
+  circuit_breaker_failure_threshold: 5
+  circuit_breaker_timeout_seconds: 60
+  circuit_breaker_half_open_attempts: 1
+
+# Environment-specific overrides (can be set via environment variables):
+# CORRECTION_MAX_ATTEMPTS
+# CORRECTION_CONFIDENCE_THRESHOLD
+# CORRECTION_ENABLE_LEARNING
+# CORRECTION_LOG_LEVEL
+# CORRECTION_TIMEOUT_SECONDS
+# CORRECTION_ENABLE_METRICS
+# CORRECTION_METRICS_PORT
