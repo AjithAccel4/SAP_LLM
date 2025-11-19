@@ -8,10 +8,14 @@ and environment variables.
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
+import logging
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, validator
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class SystemConfig(BaseModel):
@@ -153,6 +157,161 @@ class APIConfig(BaseModel):
     cors: Dict[str, Any]
     rate_limit: Dict[str, Any]
     auth: Dict[str, Any]
+
+
+class CORSSettings(BaseSettings):
+    """
+    CORS (Cross-Origin Resource Sharing) Configuration.
+
+    Security-first CORS configuration with validation to prevent common vulnerabilities.
+    Loads from environment variables with proper defaults.
+    """
+
+    # SECURITY: Default to empty string (deny all cross-origin requests) for maximum security
+    # Must be explicitly configured for production use
+    CORS_ALLOWED_ORIGINS: str = Field(
+        default="",
+        description="Comma-separated list of allowed origins for CORS. Empty string to deny all cross-origin requests."
+    )
+
+    # Load environment from system settings
+    ENVIRONMENT: str = Field(default="development")
+
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True
+    }
+
+    def __init__(self, **data):
+        """Initialize and parse CORS origins."""
+        super().__init__(**data)
+        # Parse and validate origins after initialization
+        self._validated_origins = self._parse_and_validate_origins()
+
+    def _parse_and_validate_origins(self) -> List[str]:
+        """
+        Parse and validate CORS origins for security compliance.
+
+        Security checks:
+        1. No wildcard (*) in production
+        2. Valid URL format for all origins
+        3. HTTPS requirement in production
+        4. Warning for too many origins (>5)
+
+        Returns:
+            List[str]: Validated list of origins
+        """
+        # Parse comma-separated string
+        if not self.CORS_ALLOWED_ORIGINS.strip():
+            return []
+
+        origins = [origin.strip() for origin in self.CORS_ALLOWED_ORIGINS.split(",") if origin.strip()]
+
+        if not origins:
+            return []
+
+        # SECURITY CHECK 1: No wildcards in production
+        if "*" in origins and self.ENVIRONMENT == "production":
+            raise ValueError(
+                "SECURITY VIOLATION: CORS wildcard (*) is not allowed in production. "
+                "Specify explicit allowed origins in CORS_ALLOWED_ORIGINS environment variable. "
+                "Example: CORS_ALLOWED_ORIGINS=https://app.example.com,https://api.example.com"
+            )
+
+        # SECURITY CHECK 2: Validate URL format for non-wildcard origins
+        validated_origins = []
+        for origin in origins:
+            if origin == "*":
+                # Wildcard allowed in non-production
+                if self.ENVIRONMENT != "production":
+                    logger.warning(
+                        "SECURITY WARNING: CORS wildcard (*) detected in %s environment. "
+                        "This allows ANY domain to access your API. Use explicit origins in production.",
+                        self.ENVIRONMENT
+                    )
+                    validated_origins.append(origin)
+                continue
+
+            # Parse and validate URL
+            try:
+                parsed = urlparse(origin)
+
+                # Must have scheme and netloc
+                if not parsed.scheme or not parsed.netloc:
+                    raise ValueError(
+                        f"Invalid CORS origin '{origin}': Must be a complete URL with scheme "
+                        f"(e.g., https://example.com, not example.com)"
+                    )
+
+                # SECURITY CHECK 3: HTTPS requirement in production
+                if self.ENVIRONMENT == "production" and parsed.scheme != "https":
+                    raise ValueError(
+                        f"SECURITY VIOLATION: CORS origin '{origin}' must use HTTPS in production. "
+                        f"HTTP origins are not secure and will expose your API to man-in-the-middle attacks."
+                    )
+
+                # Normalize: remove trailing slash for consistency
+                normalized_origin = f"{parsed.scheme}://{parsed.netloc}"
+
+                validated_origins.append(normalized_origin)
+
+            except ValueError:
+                raise
+            except Exception as e:
+                raise ValueError(
+                    f"Invalid CORS origin '{origin}': {str(e)}"
+                )
+
+        # SECURITY CHECK 4: Warn about too many origins (potential misconfiguration)
+        if len(validated_origins) > 5:
+            logger.warning(
+                "SECURITY WARNING: %d CORS origins configured. "
+                "Large numbers of allowed origins may indicate misconfiguration. "
+                "Consider using a more restrictive CORS policy or implementing dynamic origin validation.",
+                len(validated_origins)
+            )
+
+        return validated_origins
+
+    def get_origins(self) -> List[str]:
+        """Get the list of validated origins."""
+        return self._validated_origins
+
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.ENVIRONMENT == "production"
+
+    def validate_for_production(self) -> None:
+        """
+        Validate CORS configuration for production deployment.
+
+        Raises:
+            ValueError: If configuration is not production-ready
+        """
+        if not self.is_production():
+            return
+
+        origins = self.get_origins()
+
+        if not origins:
+            raise ValueError(
+                "SECURITY VIOLATION: CORS_ALLOWED_ORIGINS cannot be empty in production. "
+                "You must specify at least one allowed origin. "
+                "Set the CORS_ALLOWED_ORIGINS environment variable with your frontend domain(s)."
+            )
+
+        if "*" in origins:
+            raise ValueError(
+                "SECURITY VIOLATION: CORS wildcard (*) is not allowed in production."
+            )
+
+        # Verify all origins are HTTPS
+        for origin in origins:
+            if not origin.startswith("https://"):
+                raise ValueError(
+                    f"SECURITY VIOLATION: All CORS origins must use HTTPS in production. "
+                    f"Found: {origin}"
+                )
 
 
 class PerformanceConfig(BaseModel):

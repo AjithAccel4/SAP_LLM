@@ -273,6 +273,237 @@ Key environment variables:
 - `REDIS_PASSWORD`: Redis password
 - `MONGO_URI`: MongoDB connection URI
 - `CUDA_VISIBLE_DEVICES`: GPU device IDs
+- `CORS_ALLOWED_ORIGINS`: Allowed origins for CORS (see CORS Security section below)
+
+### CORS Security Configuration
+
+#### Overview
+
+Cross-Origin Resource Sharing (CORS) is a critical security mechanism that controls which domains can access your API. SAP_LLM includes comprehensive CORS validation to prevent common security vulnerabilities.
+
+#### Security Requirements
+
+**PRODUCTION REQUIREMENTS (Enforced Automatically):**
+
+1. ✅ **No Wildcard Origins** - Wildcard (`*`) is strictly forbidden in production
+2. ✅ **HTTPS Only** - All origins must use HTTPS (no HTTP allowed)
+3. ✅ **Explicit Origins** - Must specify at least one allowed origin
+4. ✅ **Valid URLs** - All origins must be properly formatted URLs with scheme and host
+
+#### Configuration
+
+Set the `CORS_ALLOWED_ORIGINS` environment variable with a comma-separated list of allowed origins:
+
+```bash
+# Development (HTTP allowed for localhost)
+export CORS_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8000"
+
+# Staging
+export CORS_ALLOWED_ORIGINS="https://staging-app.example.com,https://staging-api.example.com"
+
+# Production (HTTPS required)
+export CORS_ALLOWED_ORIGINS="https://app.qorsync.com,https://api.qorsync.com"
+```
+
+#### Docker Compose Configuration
+
+Edit your `.env` file:
+
+```bash
+ENVIRONMENT=production
+CORS_ALLOWED_ORIGINS=https://app.qorsync.com,https://api.qorsync.com
+```
+
+#### Kubernetes Configuration
+
+Add to your ConfigMap or Secret:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sap-llm-config
+  namespace: sap-llm
+data:
+  ENVIRONMENT: "production"
+  CORS_ALLOWED_ORIGINS: "https://app.qorsync.com,https://api.qorsync.com"
+```
+
+Or use a Secret for sensitive configuration:
+
+```bash
+kubectl create secret generic sap-llm-secrets \
+  --from-literal=CORS_ALLOWED_ORIGINS="https://app.qorsync.com,https://api.qorsync.com" \
+  --namespace=sap-llm
+```
+
+#### Security Validation
+
+The API performs automatic security validation on startup:
+
+1. **Wildcard Check**: Rejects `*` in production
+2. **HTTPS Validation**: Ensures all production origins use HTTPS
+3. **URL Format**: Validates proper URL structure
+4. **Empty Origins**: Requires at least one origin in production
+
+**Validation Failures:**
+
+If CORS configuration is insecure, the API will **fail to start** with a clear error message:
+
+```
+CRITICAL SECURITY ERROR: Invalid CORS Configuration
+SECURITY VIOLATION: CORS wildcard (*) is not allowed in production.
+Specify explicit allowed origins in CORS_ALLOWED_ORIGINS environment variable.
+Example: CORS_ALLOWED_ORIGINS=https://app.example.com,https://api.example.com
+```
+
+#### Best Practices
+
+**DO:**
+- ✅ Use HTTPS for all production origins
+- ✅ Keep the list minimal (only domains you own and trust)
+- ✅ Use separate configurations for dev/staging/production
+- ✅ Review CORS logs on startup for warnings
+- ✅ Document all allowed origins in your deployment docs
+
+**DON'T:**
+- ❌ Use wildcard (`*`) in production
+- ❌ Use HTTP in production
+- ❌ Add untrusted third-party domains
+- ❌ Allow more than 5 origins without review
+- ❌ Use the same configuration across all environments
+
+#### Common Scenarios
+
+**Single Page Application (SPA):**
+```bash
+# Frontend hosted on app.example.com
+CORS_ALLOWED_ORIGINS=https://app.example.com
+```
+
+**Multiple Domains:**
+```bash
+# Main app + admin panel
+CORS_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
+```
+
+**Subdomain Strategy:**
+```bash
+# Multiple subdomains (must list explicitly)
+CORS_ALLOWED_ORIGINS=https://app.example.com,https://dashboard.example.com,https://reports.example.com
+```
+
+**Development with Local Frontend:**
+```bash
+# Local development (HTTP allowed in dev mode)
+ENVIRONMENT=development
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+#### Troubleshooting
+
+**Problem: CORS errors in browser console**
+
+```
+Access to fetch at 'https://api.example.com' from origin 'https://app.example.com'
+has been blocked by CORS policy
+```
+
+**Solution:**
+1. Check that your frontend domain is in `CORS_ALLOWED_ORIGINS`
+2. Verify the URL matches exactly (including protocol and port)
+3. Check API startup logs for CORS configuration
+4. Ensure no trailing slashes in origin URLs
+
+**Problem: API fails to start with "SECURITY VIOLATION"**
+
+**Solution:**
+```bash
+# Check current configuration
+echo $CORS_ALLOWED_ORIGINS
+
+# Fix for production (use HTTPS)
+export CORS_ALLOWED_ORIGINS="https://app.example.com"
+
+# Restart API
+docker-compose restart sap-llm-api
+```
+
+**Problem: Wildcard needed for development**
+
+**Solution:**
+```bash
+# Use explicit localhost origins instead of wildcard
+ENVIRONMENT=development
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+
+# If you absolutely need wildcard for local dev:
+ENVIRONMENT=development  # Must NOT be production
+CORS_ALLOWED_ORIGINS=*   # Only works in non-production
+```
+
+#### Monitoring and Auditing
+
+Monitor CORS configuration in logs:
+
+```bash
+# Check CORS configuration on startup
+docker logs sap-llm-api | grep "CORS Configuration"
+
+# Kubernetes
+kubectl logs deployment/sap-llm-api -n sap-llm | grep "CORS Configuration"
+```
+
+Expected output:
+```
+======================================================================
+CORS Configuration Initialized
+======================================================================
+Environment: production
+Allowed Origins: ['https://app.qorsync.com', 'https://api.qorsync.com']
+======================================================================
+✓ CORS middleware configured successfully
+```
+
+#### Security Warnings
+
+The system will log warnings for potential misconfigurations:
+
+**Warning: Too Many Origins**
+```
+⚠️  SECURITY WARNING: 6 CORS origins configured.
+Large numbers of allowed origins may indicate misconfiguration.
+```
+
+**Action**: Review your origins list and remove any unnecessary domains.
+
+**Warning: Wildcard in Non-Production**
+```
+⚠️  SECURITY WARNING: CORS wildcard (*) detected in development environment.
+This allows ANY domain to access your API.
+```
+
+**Action**: Replace with explicit origins before deploying to production.
+
+#### Migration from Legacy Configuration
+
+If upgrading from an older version using `API_CORS_ORIGINS`:
+
+**Old (.env):**
+```bash
+API_CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+```
+
+**New (.env):**
+```bash
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+```
+
+**Migration Steps:**
+1. Update `.env` file with new variable name
+2. Remove `API_CORS_ORIGINS` variable
+3. Restart API service
+4. Verify CORS configuration in startup logs
 
 ### Scaling Configuration
 
@@ -551,19 +782,33 @@ performance:
 
 Before going to production:
 
+### Security
+- [ ] **Configure CORS properly** - Set CORS_ALLOWED_ORIGINS with HTTPS origins only
+- [ ] **Verify no CORS wildcards** - Ensure `*` is not in CORS_ALLOWED_ORIGINS
+- [ ] **Test CORS configuration** - Verify frontend can access API, others cannot
 - [ ] Set strong passwords for all services
 - [ ] Configure SSL/TLS certificates
+- [ ] Review security best practices
+- [ ] Configure RBAC properly
+- [ ] Set up network policies
+
+### Data & Backup
 - [ ] Set up backup strategy for Cosmos DB and MongoDB
+- [ ] Test disaster recovery procedures
+
+### Monitoring & Logging
 - [ ] Configure log aggregation
 - [ ] Set up alerting rules
-- [ ] Test disaster recovery procedures
+- [ ] Review CORS startup logs for warnings
+
+### Infrastructure
 - [ ] Configure resource limits and quotas
 - [ ] Enable pod disruption budgets
-- [ ] Set up network policies
-- [ ] Configure RBAC properly
-- [ ] Review security best practices
 - [ ] Load test the system
+
+### Documentation & Training
 - [ ] Document runbooks
+- [ ] Document all allowed CORS origins
 - [ ] Train operations team
 
 ## Support

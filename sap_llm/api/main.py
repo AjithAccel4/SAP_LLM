@@ -42,23 +42,74 @@ app = FastAPI(
     description="Enterprise Document Processing AI with Autonomous Decision-Making"
 )
 
-# CORS middleware - SECURITY: Restrict origins (no wildcards in production)
-# Load allowed origins from environment variable
-import os
-cors_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
-cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+# ============================================================================
+# SECURITY: CORS Configuration
+# ============================================================================
+# Load CORS configuration with comprehensive security validation
+from sap_llm.config import CORSSettings
 
-# Validate no wildcards in production
-if "*" in cors_origins and os.getenv("ENVIRONMENT", "development") == "production":
-    raise ValueError("CORS wildcard (*) not allowed in production. Set CORS_ALLOWED_ORIGINS environment variable.")
+try:
+    # Initialize CORS settings from environment variables
+    cors_settings = CORSSettings()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+    # SECURITY: Validate CORS configuration for production deployment
+    # This will raise ValueError if configuration is insecure
+    cors_settings.validate_for_production()
+
+    # Get validated origins list
+    allowed_origins = cors_settings.get_origins()
+
+    # Log CORS configuration for audit trail
+    logger.info("=" * 70)
+    logger.info("CORS Configuration Initialized")
+    logger.info("=" * 70)
+    logger.info("Environment: %s", cors_settings.ENVIRONMENT)
+    logger.info("Allowed Origins: %s", allowed_origins)
+
+    # SECURITY WARNING: Check for potential misconfigurations
+    if not allowed_origins:
+        logger.warning(
+            "⚠️  SECURITY WARNING: No CORS origins configured. "
+            "Cross-origin requests will be blocked by default. "
+            "Set CORS_ALLOWED_ORIGINS environment variable if you need to allow specific origins."
+        )
+    elif "*" in allowed_origins:
+        logger.warning(
+            "⚠️  SECURITY WARNING: CORS wildcard (*) detected in %s environment. "
+            "This allows ANY domain to access your API. "
+            "Replace with explicit origins in production: CORS_ALLOWED_ORIGINS=https://app.example.com",
+            cors_settings.ENVIRONMENT
+        )
+
+    logger.info("=" * 70)
+
+    # Configure CORS middleware with validated settings
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,  # SECURITY: No wildcard in production
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicit methods only
+        allow_headers=["*"],  # Allow all headers (can be restricted further if needed)
+    )
+
+    logger.info("✓ CORS middleware configured successfully")
+
+except ValueError as e:
+    # SECURITY: Fail fast on invalid CORS configuration
+    logger.error("=" * 70)
+    logger.error("CRITICAL SECURITY ERROR: Invalid CORS Configuration")
+    logger.error("=" * 70)
+    logger.error(str(e))
+    logger.error("=" * 70)
+    logger.error("API server cannot start with insecure CORS configuration.")
+    logger.error("Please fix the CORS_ALLOWED_ORIGINS environment variable and restart.")
+    logger.error("=" * 70)
+    raise
+
+except Exception as e:
+    # Catch any other configuration errors
+    logger.error("Failed to initialize CORS configuration: %s", str(e))
+    raise
 
 # Prometheus metrics
 if PROMETHEUS_AVAILABLE:
