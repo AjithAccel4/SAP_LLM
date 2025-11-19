@@ -1,0 +1,72 @@
+# Development dependencies for SAP LLM project
+# Install with: pip install -r requirements-dev.txt
+# This file includes all production dependencies plus development tools
+
+# Include production dependencies
+-r requirements.txt
+
+# Code formatting and linting
+black==23.12.1
+ruff==0.1.9
+isort==5.13.2
+autopep8==2.0.4
+
+# Type checking
+mypy==1.7.1
+types-PyYAML==6.0.12.12
+types-redis==4.6.0.11
+types-requests==2.31.0.20231231
+
+# Testing frameworks
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-asyncio==0.21.1
+pytest-xdist==3.5.0  # Parallel test execution
+pytest-timeout==2.2.0
+pytest-benchmark==4.0.0
+
+# Test data generation
+faker==22.0.0  # Already in main requirements
+hypothesis==6.92.2
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
+sphinx-autodoc-typehints==1.25.2
+myst-parser==2.0.0
+pdoc==14.3.0
+
+# Code quality and security
+bandit==1.7.6  # Security linter
+safety==3.0.1  # Dependency vulnerability scanner
+pip-audit==2.6.3  # PyPI vulnerability scanner
+pylint==3.0.3
+
+# Pre-commit hooks
+pre-commit==3.6.0
+
+# Debugging and profiling
+ipdb==0.13.13
+ipython==8.19.0
+memory-profiler==0.61.0
+py-spy==0.3.14
+line-profiler==4.1.1
+
+# Development utilities
+python-dotenv==1.0.0  # Already in main requirements
+watchdog==3.0.0  # File system monitoring for auto-reload
+ptpython==3.0.25  # Better Python REPL
+
+# API development tools
+httpie==3.2.2
+locust==2.20.0  # Load testing
+
+# Jupyter notebook support
+jupyter==1.0.0
+jupyterlab==4.0.10
+notebook==7.0.6
+ipywidgets==8.1.1
+
+# Git hooks and version control
+commitizen==3.13.0

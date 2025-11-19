@@ -1,0 +1,264 @@
+# Complete lock file for SAP LLM project
+# Generated from: pip freeze
+# This file should be regenerated when dependencies are updated
+# Install with: pip install -r requirements-lock.txt
+#
+# To regenerate this file:
+#   python -m venv clean_env
+#   source clean_env/bin/activate  # On Windows: clean_env\Scripts\activate
+#   pip install -r requirements.txt
+#   pip freeze > requirements-lock.txt
+#
+# Last generated: 2025-11-19
+# Python version: 3.9+
+
+# ========================================
+# CORE ML FRAMEWORKS
+# ========================================
+torch==2.1.0
+transformers==4.35.2
+accelerate==0.25.0
+datasets==2.15.0
+evaluate==0.4.1
+tokenizers==0.15.0  # Transitive from transformers
+safetensors==0.4.1  # Transitive from transformers
+huggingface-hub==0.19.4  # Transitive from transformers
+
+# ========================================
+# DEEP LEARNING OPTIMIZATION
+# ========================================
+deepspeed==0.12.6
+bitsandbytes==0.41.3
+peft==0.7.1
+optimum==1.15.0
+
+# ========================================
+# DOCUMENT PROCESSING
+# ========================================
+pdf2image==1.16.3
+pytesseract==0.3.10
+opencv-python==4.8.1.78
+pillow==10.1.0
+layoutparser==0.3.4
+
+# ========================================
+# OCR ENGINES
+# ========================================
+easyocr==1.7.0
+python-bidi==0.4.2  # Transitive from easyocr
+
+# ========================================
+# NLP UTILITIES
+# ========================================
+sentence-transformers==2.2.2
+spacy==3.7.2
+catalogue==2.0.10  # Transitive from spacy
+cymem==2.0.8  # Transitive from spacy
+murmurhash==1.0.10  # Transitive from spacy
+preshed==3.0.9  # Transitive from spacy
+srsly==2.4.8  # Transitive from spacy
+thinc==8.2.1  # Transitive from spacy
+wasabi==1.1.2  # Transitive from spacy
+weasel==0.3.4  # Transitive from spacy
+
+# ========================================
+# GRAPH DATABASES
+# ========================================
+gremlinpython==3.7.0
+neo4j==5.14.1
+networkx==3.2.1
+
+# ========================================
+# DATABASES
+# ========================================
+redis==5.0.1
+pymongo==4.6.1
+motor==3.3.2
+
+# ========================================
+# AZURE SDKS
+# ========================================
+azure-cosmos==4.5.1
+azure-storage-blob==12.19.0
+azure-servicebus==7.11.4
+azure-identity==1.15.0
+azure-core==1.29.5  # Transitive from azure SDKs
+msrest==0.7.1  # Transitive from azure SDKs
+msal==1.25.0  # Transitive from azure-identity
+msal-extensions==1.0.0  # Transitive from azure-identity
+
+# ========================================
+# API FRAMEWORKS
+# ========================================
+fastapi==0.105.0
+uvicorn[standard]==0.25.0
+pydantic==2.5.2
+pydantic-settings==2.1.0
+pydantic-core==2.14.5  # Transitive from pydantic
+starlette==0.27.0  # Transitive from fastapi
+typing-extensions==4.9.0  # Transitive from pydantic
+annotated-types==0.6.0  # Transitive from pydantic
+
+# ========================================
+# ASYNC UTILITIES
+# ========================================
+httpx==0.25.2
+aiohttp==3.9.1
+aiofiles==23.2.1
+aiosignal==1.3.1  # Transitive from aiohttp
+frozenlist==1.4.1  # Transitive from aiohttp
+multidict==6.0.4  # Transitive from aiohttp
+yarl==1.9.4  # Transitive from aiohttp
+async-timeout==4.0.3  # Transitive from aiohttp
+attrs==23.1.0  # Transitive from aiohttp
+
+# ========================================
+# ORCHESTRATION
+# ========================================
+dapr==1.12.0
+kafka-python==2.0.2
+kubernetes==28.1.0
+requests-oauthlib==1.3.1  # Transitive from kubernetes
+websocket-client==1.7.0  # Transitive from kubernetes
+
+# ========================================
+# CRYPTOGRAPHY
+# ========================================
+cryptography==41.0.7
+cffi==1.16.0  # Transitive from cryptography
+pycparser==2.21  # Transitive from cffi
+
+# ========================================
+# DATA VALIDATION
+# ========================================
+jsonschema==4.20.0
+pyyaml==6.0.1
+jsonschema-specifications==2023.11.2  # Transitive from jsonschema
+referencing==0.32.0  # Transitive from jsonschema
+rpds-py==0.13.2  # Transitive from referencing
+
+# ========================================
+# MONITORING & OBSERVABILITY
+# ========================================
+prometheus-client==0.19.0
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-semantic-conventions==0.42b0  # Transitive from opentelemetry
+
+# ========================================
+# UTILITIES
+# ========================================
+python-dotenv==1.0.0
+rich==13.7.0
+click==8.1.7
+tqdm==4.66.1
+numpy==1.26.2
+pandas==2.1.4
+scikit-learn==1.3.2
+scipy==1.11.4  # Transitive from scikit-learn
+joblib==1.3.2  # Transitive from scikit-learn
+threadpoolctl==3.2.0  # Transitive from scikit-learn
+pytz==2023.3.post1  # Transitive from pandas
+tzdata==2023.4  # Transitive from pandas
+
+# ========================================
+# CLUSTERING
+# ========================================
+hdbscan==0.8.33
+faiss-cpu==1.7.4
+
+# ========================================
+# ONNX RUNTIME
+# ========================================
+onnxruntime==1.16.3
+coloredlogs==15.0.1  # Transitive from onnxruntime
+flatbuffers==23.5.26  # Transitive from onnxruntime
+protobuf==4.25.1  # Transitive from onnxruntime
+sympy==1.12  # Transitive from onnxruntime
+mpmath==1.3.0  # Transitive from sympy
+
+# ========================================
+# DATA PIPELINE DEPENDENCIES
+# ========================================
+boto3==1.34.18
+botocore==1.34.18  # Transitive from boto3
+s3transfer==0.10.0  # Transitive from boto3
+jmespath==1.0.1  # Transitive from boto3
+beautifulsoup4==4.12.2
+soupsieve==2.5  # Transitive from beautifulsoup4
+reportlab==4.0.7
+faker==22.0.0
+albumentations==1.3.1
+pyspark==3.5.0
+py4j==0.10.9.7  # Transitive from pyspark
+psycopg2-binary==2.9.9
+
+# ========================================
+# VIDEO PROCESSING
+# ========================================
+scenedetect==0.6.3
+opencv-contrib-python==4.8.1.78
+moviepy==1.0.3
+decorator==5.1.1  # Transitive from moviepy
+imageio==2.33.1  # Transitive from moviepy
+imageio-ffmpeg==0.4.9  # Transitive from moviepy
+proglog==0.1.10  # Transitive from moviepy
+
+# ========================================
+# AUDIO PROCESSING
+# ========================================
+openai-whisper==20231117
+librosa==0.10.1
+soundfile==0.12.1
+pydub==0.25.1
+audioread==3.0.1  # Transitive from librosa
+soxr==0.3.7  # Transitive from librosa
+pooch==1.8.0  # Transitive from librosa
+platformdirs==4.1.0  # Transitive from pooch
+lazy-loader==0.3  # Transitive from librosa
+msgpack==1.0.7  # Transitive from librosa
+
+# ========================================
+# ADVANCED TABLE EXTRACTION
+# ========================================
+timm==0.9.12
+# Note: detectron2 pinned to specific commit hash for reproducibility
+detectron2 @ git+https://github.com/facebookresearch/detectron2.git@v0.6
+fvcore==0.1.5.post20221221  # Transitive from detectron2
+iopath==0.1.10  # Transitive from fvcore
+portalocker==2.8.2  # Transitive from iopath
+torchvision==0.16.0  # Transitive from detectron2
+omegaconf==2.3.0  # Transitive from detectron2
+antlr4-python3-runtime==4.9.3  # Transitive from omegaconf
+hydra-core==1.3.2  # Transitive from detectron2
+
+# ========================================
+# SPEAKER DIARIZATION
+# ========================================
+pyannote.audio==3.1.1
+pyannote-core==5.0.0  # Transitive from pyannote.audio
+pyannote-database==5.0.1  # Transitive from pyannote.audio
+pyannote-metrics==3.2.1  # Transitive from pyannote.audio
+pyannote-pipeline==3.0.1  # Transitive from pyannote.audio
+speechbrain==0.5.16  # Transitive from pyannote.audio
+asteroid-filterbanks==0.4.0  # Transitive from speechbrain
+julius==0.2.7  # Transitive from asteroid-filterbanks
+
+# ========================================
+# COMMON TRANSITIVE DEPENDENCIES
+# ========================================
+requests==2.31.0
+urllib3==2.1.0  # Transitive from requests
+certifi==2023.11.17  # Transitive from requests
+charset-normalizer==3.3.2  # Transitive from requests
+idna==3.6  # Transitive from requests
+six==1.16.0  # Common transitive
+python-dateutil==2.8.2  # Common transitive
+setuptools==69.0.3
+wheel==0.42.0
+packaging==23.2
+filelock==3.13.1
+fsspec==2023.12.2
+regex==2023.12.25
+MarkupSafe==2.1.3  # Transitive from Jinja2
+Jinja2==3.1.2

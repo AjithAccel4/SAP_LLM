@@ -1,0 +1,58 @@
+# Test dependencies for SAP LLM project
+# Install with: pip install -r requirements-test.txt
+# This file includes all production dependencies plus testing tools
+
+# Include production dependencies
+-r requirements.txt
+
+# Core testing framework
+pytest==7.4.3
+pytest-cov==4.1.0  # Coverage reporting
+pytest-mock==3.12.0  # Mocking utilities
+pytest-asyncio==0.21.1  # Async test support
+pytest-xdist==3.5.0  # Parallel test execution
+pytest-timeout==2.2.0  # Test timeout handling
+pytest-benchmark==4.0.0  # Performance benchmarking
+
+# Additional pytest plugins
+pytest-env==1.1.3  # Environment variable management
+pytest-html==4.1.1  # HTML test reports
+pytest-json-report==1.5.0  # JSON test reports
+pytest-repeat==0.9.3  # Repeat tests for flakiness detection
+pytest-randomly==3.15.0  # Randomize test order
+
+# Test data and mocking
+faker==22.0.0  # Already in main requirements
+factory-boy==3.3.0  # Test fixture factories
+responses==0.24.1  # Mock HTTP requests
+requests-mock==1.11.0  # Alternative HTTP mocking
+freezegun==1.4.0  # Mock datetime
+faker-web3==0.1.0  # Web3 test data
+
+# Property-based testing
+hypothesis==6.92.2
+
+# API testing
+httpx==0.25.2  # Already in main requirements
+aioresponses==0.7.6  # Mock aiohttp requests
+
+# Database testing
+fakeredis==2.20.1  # Fake Redis for testing
+mongomock==4.1.2  # Mock MongoDB
+pytest-mongodb==3.0.0
+
+# ML testing utilities
+torch==2.1.0  # Already in main requirements
+torchmetrics==1.2.1  # ML metrics for validation
+
+# Contract testing
+pact-python==2.1.1
+
+# Visual regression testing
+pytest-mpl==0.16.1  # Matplotlib figure comparison
+
+# Performance and load testing
+locust==2.20.0  # Load testing framework
+
+# Code coverage
+coverage[toml]==7.4.0

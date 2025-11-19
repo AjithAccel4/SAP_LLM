@@ -107,7 +107,8 @@ pydub==0.25.1
 
 # Advanced table extraction
 timm==0.9.12  # For TableTransformer models
-detectron2 @ git+https://github.com/facebookresearch/detectron2.git@main  # For table detection
+# Note: detectron2 pinned to specific commit hash for reproducibility
+detectron2 @ git+https://github.com/facebookresearch/detectron2.git@v0.6
 
 # Speaker diarization
 pyannote.audio==3.1.1
