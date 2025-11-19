@@ -1,58 +1,74 @@
-# Test dependencies for SAP LLM project
+# Testing Dependencies for SAP_LLM
+# =====================================
 # Install with: pip install -r requirements-test.txt
-# This file includes all production dependencies plus testing tools
 
-# Include production dependencies
--r requirements.txt
+# Core Testing Framework
+pytest>=7.4.3
+pytest-asyncio>=0.21.1          # Async test support
+pytest-cov>=4.1.0               # Coverage measurement
+pytest-mock>=3.12.0             # Mocking utilities
+pytest-xdist>=3.5.0             # Parallel test execution
+pytest-timeout>=2.2.0           # Test timeout handling
+pytest-benchmark>=4.0.0         # Performance benchmarking
 
-# Core testing framework
-pytest==7.4.3
-pytest-cov==4.1.0  # Coverage reporting
-pytest-mock==3.12.0  # Mocking utilities
-pytest-asyncio==0.21.1  # Async test support
-pytest-xdist==3.5.0  # Parallel test execution
-pytest-timeout==2.2.0  # Test timeout handling
-pytest-benchmark==4.0.0  # Performance benchmarking
+# Code Quality & Linting
+black>=23.12.0                  # Code formatting
+ruff>=0.1.8                     # Fast Python linter
+mypy>=1.7.1                     # Static type checking
+isort>=5.13.2                   # Import sorting
+flake8>=7.0.0                   # Style guide enforcement
+pylint>=3.0.3                   # Comprehensive linting
+bandit>=1.7.6                   # Security linting
 
-# Additional pytest plugins
-pytest-env==1.1.3  # Environment variable management
-pytest-html==4.1.1  # HTML test reports
-pytest-json-report==1.5.0  # JSON test reports
-pytest-repeat==0.9.3  # Repeat tests for flakiness detection
-pytest-randomly==3.15.0  # Randomize test order
+# Coverage Tools
+coverage[toml]>=7.3.4           # Coverage.py with TOML support
+coverage-badge>=1.1.0           # Generate coverage badges
 
-# Test data and mocking
-faker==22.0.0  # Already in main requirements
-factory-boy==3.3.0  # Test fixture factories
-responses==0.24.1  # Mock HTTP requests
-requests-mock==1.11.0  # Alternative HTTP mocking
-freezegun==1.4.0  # Mock datetime
-faker-web3==0.1.0  # Web3 test data
+# Testing Utilities
+faker>=22.0.0                   # Generate fake test data
+freezegun>=1.4.0                # Mock datetime for tests
+responses>=0.24.1               # Mock HTTP responses
+factory-boy>=3.3.0              # Test fixtures factory
+hypothesis>=6.92.2              # Property-based testing
 
-# Property-based testing
-hypothesis==6.92.2
+# Async Testing
+aioresponses>=0.7.6             # Mock aiohttp responses
+pytest-aiohttp>=1.0.5           # aiohttp test utilities
 
-# API testing
-httpx==0.25.2  # Already in main requirements
-aioresponses==0.7.6  # Mock aiohttp requests
+# Database Testing
+pytest-postgresql>=5.0.0        # PostgreSQL fixtures
+pytest-mongodb>=3.1.0           # MongoDB fixtures
+fakeredis>=2.20.1               # Fake Redis for testing
 
-# Database testing
-fakeredis==2.20.1  # Fake Redis for testing
-mongomock==4.1.2  # Mock MongoDB
-pytest-mongodb==3.0.0
+# API Testing
+httpx>=0.25.2                   # Modern HTTP client
+requests>=2.31.0                # HTTP library
+requests-mock>=1.11.0           # Mock requests
 
-# ML testing utilities
-torch==2.1.0  # Already in main requirements
-torchmetrics==1.2.1  # ML metrics for validation
+# Documentation Testing
+pytest-doctestplus>=1.1.0       # Enhanced doctest
+sphinx>=7.2.6                   # Documentation generation
 
-# Contract testing
-pact-python==2.1.1
+# Performance & Load Testing
+locust>=2.20.0                  # Load testing framework
+pytest-profiling>=1.7.0         # Profile test performance
 
-# Visual regression testing
-pytest-mpl==0.16.1  # Matplotlib figure comparison
+# Reporting
+pytest-html>=4.1.1              # HTML test reports
+pytest-json-report>=1.5.0       # JSON test reports
+allure-pytest>=2.13.2           # Allure test reports
 
-# Performance and load testing
-locust==2.20.0  # Load testing framework
+# Chaos Engineering
+pytest-randomly>=3.15.0         # Randomize test order
+pytest-repeat>=0.9.3            # Repeat tests for flakiness detection
 
-# Code coverage
-coverage[toml]==7.4.0
+# Security Testing
+safety>=3.0.1                   # Dependency vulnerability scanning
+
+# Compatibility
+tox>=4.11.4                     # Multi-environment testing
+
+# Development Tools
+ipython>=8.18.1                 # Enhanced Python shell
+ipdb>=0.13.13                   # IPython debugger
+pre-commit>=3.6.0               # Git hooks framework

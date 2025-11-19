@@ -6,7 +6,7 @@ import os
 import pytest
 from pathlib import Path
 
-from sap_llm.config import Config, load_config
+from sap_llm.config import Config, load_config, save_config
 
 
 @pytest.mark.unit
