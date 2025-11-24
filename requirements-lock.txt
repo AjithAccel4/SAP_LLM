@@ -184,7 +184,7 @@ boto3==1.34.18
 botocore==1.34.18  # Transitive from boto3
 s3transfer==0.10.0  # Transitive from boto3
 jmespath==1.0.1  # Transitive from boto3
-beautifulsoup4==4.12.2
+beautifulsoup4==4.14.2
 soupsieve==2.5  # Transitive from beautifulsoup4
 reportlab==4.0.7
 faker==22.0.0
