@@ -126,7 +126,7 @@ websocket-client==1.7.0  # Transitive from kubernetes
 # ========================================
 cryptography==41.0.7
 cffi==1.16.0  # Transitive from cryptography
-pycparser==2.21  # Transitive from cffi
+pycparser==2.23  # Transitive from cffi
 
 # ========================================
 # DATA VALIDATION
