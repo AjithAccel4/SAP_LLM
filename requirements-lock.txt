@@ -57,7 +57,7 @@ cymem==2.0.8  # Transitive from spacy
 murmurhash==1.0.10  # Transitive from spacy
 preshed==3.0.9  # Transitive from spacy
 srsly==2.4.8  # Transitive from spacy
-thinc==8.2.1  # Transitive from spacy
+thinc==9.1.1  # Transitive from spacy
 wasabi==1.1.2  # Transitive from spacy
 weasel==0.3.4  # Transitive from spacy
 
