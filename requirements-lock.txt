@@ -21,7 +21,7 @@ accelerate==0.25.0
 datasets==2.15.0
 evaluate==0.4.1
 tokenizers==0.15.0  # Transitive from transformers
-safetensors==0.4.1  # Transitive from transformers
+safetensors==0.7.0  # Transitive from transformers
 huggingface-hub==0.19.4  # Transitive from transformers
 
 # ========================================
