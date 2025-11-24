@@ -209,7 +209,7 @@ proglog==0.1.10  # Transitive from moviepy
 # ========================================
 openai-whisper==20231117
 librosa==0.10.1
-soundfile==0.12.1
+soundfile==0.13.1
 pydub==0.25.1
 audioread==3.0.1  # Transitive from librosa
 soxr==0.3.7  # Transitive from librosa
