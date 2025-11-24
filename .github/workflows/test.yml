@@ -88,7 +88,7 @@ jobs:
             -v
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
           flags: unit,${{ matrix.test-group }},python-${{ matrix.python-version }}
@@ -215,7 +215,7 @@ jobs:
           POSTGRES_DB: testdb
 
       - name: Upload integration coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
           flags: integration,${{ matrix.test-suite }}
@@ -461,7 +461,7 @@ jobs:
           echo "Coverage reports combined (placeholder)"
 
       - name: Upload combined coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           directory: ./coverage-data/
           flags: combined

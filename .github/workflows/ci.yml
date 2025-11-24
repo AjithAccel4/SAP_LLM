@@ -220,7 +220,7 @@ jobs:
           PYTEST_TIMEOUT: 300
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
           flags: unit,python-${{ matrix.python-version }}
@@ -323,7 +323,7 @@ jobs:
           MONGODB_PASSWORD: testpass
 
       - name: Upload integration coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
           flags: integration
