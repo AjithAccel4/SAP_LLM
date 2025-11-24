@@ -134,7 +134,7 @@ dependencies = [
     # Audio processing
     "openai-whisper==20231117",
     "librosa==0.10.1",
-    "soundfile==0.12.1",
+    "soundfile==0.13.1",
     "pydub==0.25.1",
 
     # Advanced table extraction
