@@ -87,7 +87,7 @@ dependencies = [
     # Orchestration
     "dapr==1.12.0",
     "kafka-python==2.0.2",
-    "kubernetes==28.1.0",
+    "kubernetes==34.1.0",
 
     # Cryptography
     "cryptography==41.0.7",
