@@ -244,7 +244,7 @@ jobs:
           exit-code: '1'
 
       - name: Run Grype vulnerability scanner
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v7
         id: grype-scan
         with:
           image: sap-llm:security-scan
