@@ -117,7 +117,7 @@ attrs==23.1.0  # Transitive from aiohttp
 # ========================================
 dapr==1.12.0
 kafka-python==2.0.2
-kubernetes==28.1.0
+kubernetes==34.1.0
 requests-oauthlib==1.3.1  # Transitive from kubernetes
 websocket-client==1.7.0  # Transitive from kubernetes
 
